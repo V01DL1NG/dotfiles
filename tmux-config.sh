@@ -40,6 +40,11 @@ fi
 echo "Installing tmux.conf to $TMUX_CONF"
 cp "$SCRIPT_DIR/tmux.conf" "$TMUX_CONF"
 
+# Install now-playing script
+mkdir -p "$HOME/.tmux"
+cp "$SCRIPT_DIR/now-playing.sh" "$HOME/.tmux/now-playing.sh"
+chmod +x "$HOME/.tmux/now-playing.sh"
+
 echo ""
 echo "Done. To apply:"
 echo "  - In a running tmux session: press Ctrl+a then r"
