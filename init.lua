@@ -188,10 +188,28 @@ local plugins = {
     end,
   },
 
+  -- Mason (auto-install LSP servers)
+  {
+    "williamboman/mason.nvim",
+    config = function()
+      require("mason").setup()
+    end,
+  },
+  {
+    "williamboman/mason-lspconfig.nvim",
+    dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
+    config = function()
+      require("mason-lspconfig").setup({
+        ensure_installed = { "lua_ls", "pyright", "ts_ls" },
+        automatic_installation = true,
+      })
+    end,
+  },
+
   -- LSP and Completion
   {
     "neovim/nvim-lspconfig",
-    dependencies = { "hrsh7th/nvim-cmp", "hrsh7th/cmp-nvim-lsp" },
+    dependencies = { "hrsh7th/nvim-cmp", "hrsh7th/cmp-nvim-lsp", "williamboman/mason-lspconfig.nvim" },
     config = function()
       local lspconfig = require("lspconfig")
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
@@ -286,6 +304,32 @@ local plugins = {
           topdelete = { text = "‾" },
           changedelete = { text = "~" },
         },
+      })
+    end,
+  },
+
+  -- Which-key (keybinding popup)
+  {
+    "folke/which-key.nvim",
+    event = "VeryLazy",
+    config = function()
+      local wk = require("which-key")
+      wk.setup({
+        delay = 300,
+      })
+      wk.add({
+        { "<Leader>f", group = "Find" },
+        { "<Leader>ff", desc = "Find files" },
+        { "<Leader>fg", desc = "Live grep" },
+        { "<Leader>fb", desc = "Buffers" },
+        { "<Leader>fh", desc = "Help tags" },
+        { "<Leader>w", desc = "Save" },
+        { "<Leader>q", desc = "Quit" },
+        { "<Leader>Q", desc = "Force quit" },
+        { "<Leader>n", desc = "Toggle file explorer" },
+        { "<Leader>/", desc = "Toggle comment" },
+        { "<Leader>rn", desc = "Rename symbol" },
+        { "<Leader>ca", desc = "Code action" },
       })
     end,
   },
