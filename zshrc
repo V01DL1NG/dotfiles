@@ -66,8 +66,40 @@ alias ll='eza -la --icons'
 alias lt='eza --tree --icons --level=2'
 alias ls='eza --icons'
 
+# bat (syntax-highlighted cat)
+alias cat='bat --paging=never'
+alias catp='bat'                # bat with pager (for long files)
+alias rawcat='command cat'      # original cat (no syntax highlighting)
+export BAT_THEME="gruvbox-dark"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"  # colored man pages
+
+# lazygit
+alias lg='lazygit'
+
+# btop replaces top
+alias top='btop'
+
 # python3 to py
 alias py="python3"
+
+# ===========================================================================
+# FZF
+# ===========================================================================
+
+if command -v fzf >/dev/null 2>&1; then
+  source <(fzf --zsh)
+  export FZF_DEFAULT_OPTS="
+    --height=40% --layout=reverse --border=rounded
+    --color=bg+:#3c3836,bg:#282828,spinner:#fb4934,hl:#928374
+    --color=fg:#ebdbb2,header:#928374,info:#8ec07c,pointer:#fb4934
+    --color=marker:#fb4934,fg+:#ebdbb2,prompt:#fb4934,hl+:#fb4934
+    --preview-window=right:50%:wrap
+  "
+  # ctrl-t: file picker with bat preview
+  export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=numbers --line-range=:200 {} 2>/dev/null || echo {}'"
+  # ctrl-r: history search (already works, just styling)
+  export FZF_CTRL_R_OPTS="--layout=reverse"
+fi
 
 # ===========================================================================
 # FUNCTIONS
