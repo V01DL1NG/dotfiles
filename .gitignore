@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+._*
+
+# Backups created by setup scripts
+*.backup.*
+
+# Personal/sensitive overrides
+Brewfile.personal
+*.local
+
+# SSH keys (never commit these)
+id_*
+*.pem
+*.key
+
+# Editor artifacts
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Logs
+*.log
