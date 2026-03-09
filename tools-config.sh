@@ -8,14 +8,14 @@ if ! command -v brew >/dev/null 2>&1; then
   exit 1
 fi
 
-tools=(fzf bat lazygit btop)
+tools=(fzf bat lazygit btop zsh-autosuggestions zsh-syntax-highlighting)
 
 for tool in "${tools[@]}"; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
+  if brew list "$tool" &>/dev/null; then
+    echo "$tool already installed"
+  else
     echo "Installing $tool via Homebrew..."
     brew install "$tool"
-  else
-    echo "$tool already installed"
   fi
 done
 
@@ -30,5 +30,7 @@ echo "  fzf     - fuzzy finder (ctrl-r for history, ctrl-t for files)"
 echo "  bat     - syntax-highlighted cat"
 echo "  lazygit - terminal git UI (alias: lg)"
 echo "  btop    - system monitor (alias: top)"
+echo "  zsh-autosuggestions   - ghost text from history"
+echo "  zsh-syntax-highlighting - command coloring"
 echo ""
 echo "Run: source ~/.zshrc  (or open a new terminal)"

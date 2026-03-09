@@ -180,10 +180,11 @@ local plugins = {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
     config = function()
-      require("nvim-treesitter.configs").setup({
-        auto_install = true,
-        highlight = { enable = true },
-        indent = { enable = true },
+      vim.treesitter.language.register("bash", "sh")
+      vim.api.nvim_create_autocmd("FileType", {
+        callback = function()
+          pcall(vim.treesitter.start)
+        end,
       })
     end,
   },
@@ -211,11 +212,13 @@ local plugins = {
     "neovim/nvim-lspconfig",
     dependencies = { "hrsh7th/nvim-cmp", "hrsh7th/cmp-nvim-lsp", "williamboman/mason-lspconfig.nvim" },
     config = function()
-      local lspconfig = require("lspconfig")
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
       -- Lua
-      lspconfig.lua_ls.setup({
+      vim.lsp.config.lua_ls = {
+        cmd = { "lua-language-server" },
+        filetypes = { "lua" },
+        root_markers = { ".luarc.json", ".git" },
         capabilities = capabilities,
         settings = {
           Lua = {
@@ -223,13 +226,25 @@ local plugins = {
             workspace = { checkThirdParty = false },
           },
         },
-      })
+      }
 
       -- Python
-      lspconfig.pyright.setup({ capabilities = capabilities })
+      vim.lsp.config.pyright = {
+        cmd = { "pyright-langserver", "--stdio" },
+        filetypes = { "python" },
+        root_markers = { "pyrightconfig.json", "pyproject.toml", ".git" },
+        capabilities = capabilities,
+      }
 
       -- TypeScript/JavaScript
-      lspconfig.ts_ls.setup({ capabilities = capabilities })
+      vim.lsp.config.ts_ls = {
+        cmd = { "typescript-language-server", "--stdio" },
+        filetypes = { "typescript", "typescriptreact", "javascript", "javascriptreact" },
+        root_markers = { "tsconfig.json", "package.json", ".git" },
+        capabilities = capabilities,
+      }
+
+      vim.lsp.enable({ "lua_ls", "pyright", "ts_ls" })
 
       -- LSP keybindings (activate when LSP attaches)
       vim.api.nvim_create_autocmd("LspAttach", {
@@ -285,9 +300,19 @@ local plugins = {
   { "tpope/vim-surround" },
   { "tpope/vim-repeat" },
   {
-    "ggandor/leap.nvim",
+    "windwp/nvim-autopairs",
+    event = "InsertEnter",
     config = function()
-      require("leap").create_default_mappings()
+      require("nvim-autopairs").setup()
+    end,
+  },
+  {
+    url = "https://codeberg.org/andyg/leap.nvim",
+    config = function()
+      vim.keymap.set("n", "s", "<Plug>(leap)")
+      vim.keymap.set("n", "S", "<Plug>(leap-from-window)")
+      vim.keymap.set({ "x", "o" }, "s", "<Plug>(leap-forward)")
+      vim.keymap.set({ "x", "o" }, "S", "<Plug>(leap-backward)")
     end,
   },
 
@@ -311,7 +336,6 @@ local plugins = {
   -- Which-key (keybinding popup)
   {
     "folke/which-key.nvim",
-    event = "VeryLazy",
     config = function()
       local wk = require("which-key")
       wk.setup({

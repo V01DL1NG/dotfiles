@@ -90,15 +90,44 @@ if command -v fzf >/dev/null 2>&1; then
   source <(fzf --zsh)
   export FZF_DEFAULT_OPTS="
     --height=40% --layout=reverse --border=rounded
-    --color=bg+:#3c3836,bg:#282828,spinner:#fb4934,hl:#928374
-    --color=fg:#ebdbb2,header:#928374,info:#8ec07c,pointer:#fb4934
-    --color=marker:#fb4934,fg+:#ebdbb2,prompt:#fb4934,hl+:#fb4934
+    --color=bg+:#341948,bg:#0E050F,spinner:#69307A,hl:#EFDCF9
+    --color=fg:#EFDCF9,header:#4c1f5e,info:#69307A,pointer:#EFDCF9
+    --color=marker:#69307A,fg+:#EFDCF9,prompt:#69307A,hl+:#EFDCF9
     --preview-window=right:50%:wrap
   "
   # ctrl-t: file picker with bat preview
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=numbers --line-range=:200 {} 2>/dev/null || echo {}'"
   # ctrl-r: history search (already works, just styling)
   export FZF_CTRL_R_OPTS="--layout=reverse"
+fi
+
+# ===========================================================================
+# ZSH PLUGINS
+# ===========================================================================
+
+# Autosuggestions (ghost text from history)
+if [ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
+  source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+  ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#4c1f5e"
+  ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+fi
+
+# Syntax highlighting (velvet theme colors)
+if [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
+  source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+  ZSH_HIGHLIGHT_STYLES[command]="fg=#EFDCF9,bold"
+  ZSH_HIGHLIGHT_STYLES[builtin]="fg=#EFDCF9,bold"
+  ZSH_HIGHLIGHT_STYLES[alias]="fg=#EFDCF9,bold"
+  ZSH_HIGHLIGHT_STYLES[function]="fg=#EFDCF9,bold"
+  ZSH_HIGHLIGHT_STYLES[unknown-token]="fg=#69307A,underline"
+  ZSH_HIGHLIGHT_STYLES[path]="fg=#EFDCF9,underline"
+  ZSH_HIGHLIGHT_STYLES[single-quoted-argument]="fg=#7FD5EA"
+  ZSH_HIGHLIGHT_STYLES[double-quoted-argument]="fg=#7FD5EA"
+  ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]="fg=#7FD5EA"
+  ZSH_HIGHLIGHT_STYLES[commandseparator]="fg=#69307A"
+  ZSH_HIGHLIGHT_STYLES[redirection]="fg=#69307A"
+  ZSH_HIGHLIGHT_STYLES[globbing]="fg=#E4F34A"
+  ZSH_HIGHLIGHT_STYLES[comment]="fg=#341948"
 fi
 
 # ===========================================================================

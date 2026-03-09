@@ -5,17 +5,21 @@ Dotfiles and setup scripts for macOS terminal environment. Each config has an id
 ## Quick Start
 
 ```bash
-# Clone and run any setup script
+# Clone and install everything at once
 git clone <repo-url> ~/code/shell-config
 cd ~/code/shell-config
+./install-all.sh
 
+# Or run individual setup scripts
 ./setup.sh          # oh-my-posh prompt
 ./eza-config.sh     # eza (modern ls)
-./tmux-config.sh    # tmux + now-playing
-./zshrc-config.sh   # zsh config
-./nvim-config.sh    # neovim + LSP servers
-./tools-config.sh   # fzf, bat, lazygit, btop
+./tools-config.sh   # fzf, bat, lazygit, btop, zsh plugins
 ./git-config.sh     # gitconfig + delta
+./tmux-config.sh    # tmux + now-playing
+./nvim-config.sh    # neovim + LSP servers
+./zshrc-config.sh   # zsh config
+./iterm-config.sh   # iTerm2 velvet theme
+./ssh-config.sh     # SSH config
 ```
 
 ## What's Included
@@ -29,6 +33,8 @@ cd ~/code/shell-config
 | Completion | Arrow-key menu, case-insensitive |
 | Navigation | `autocd`, `autopushd` with directory stack |
 | fzf | `Ctrl-R` history search, `Ctrl-T` file picker with preview |
+| Autosuggestions | Ghost text from history as you type |
+| Syntax highlighting | Commands colored in velvet theme palette |
 
 **Aliases:**
 
@@ -62,7 +68,9 @@ Plugin manager: **lazy.nvim** (auto-bootstraps on first launch)
 | File explorer | nvim-tree |
 | Fuzzy finder | Telescope (`<Space>ff`, `<Space>fg`, `<Space>fb`) |
 | Syntax | Treesitter (auto-install) |
-| LSP | lua_ls, pyright, ts_ls with nvim-cmp completion |
+| LSP | Mason auto-installs lua_ls, pyright, ts_ls with nvim-cmp completion |
+| Keybinding help | which-key popup on `<Space>` |
+| Auto-pairs | Auto-close brackets, quotes, parentheses |
 | Motion | Leap.nvim |
 | Git | Fugitive + Gitsigns |
 | Editing | vim-commentary, vim-surround, vim-repeat |
@@ -107,6 +115,10 @@ Themed to match the **velvet** oh-my-posh prompt (purple/violet/lavender).
 | `Ctrl+a h/j/k/l` | Navigate panes (vim-style) |
 | `Ctrl+a [` | Enter copy mode |
 | `Ctrl+a r` | Reload config |
+| `Ctrl+a Ctrl+s` | Save session (resurrect) |
+| `Ctrl+a Ctrl+r` | Restore session (resurrect) |
+
+**Plugins:** tmux-resurrect (session persistence) + tmux-continuum (auto-save every 15min). TPM auto-bootstraps on first load.
 
 ### Git (`gitconfig` / `git-config.sh`)
 
@@ -141,6 +153,8 @@ Installs via Homebrew:
 | **bat** | Syntax-highlighted `cat` replacement |
 | **lazygit** | Terminal UI for git |
 | **btop** | System monitor |
+| **zsh-autosuggestions** | Ghost text from history |
+| **zsh-syntax-highlighting** | Command coloring (velvet theme) |
 
 ### Theme
 
@@ -161,17 +175,23 @@ All configs use a consistent **velvet/sakura** color palette:
 
 ```
 shell-config/
-├── setup.sh          # oh-my-posh prompt setup
-├── eza-config.sh     # eza aliases setup
-├── tmux-config.sh    # tmux setup
-├── tmux.conf         # tmux config source
-├── now-playing.sh    # now-playing script for tmux status bar
-├── zshrc-config.sh   # zsh setup
-├── zshrc             # zsh config source
-├── nvim-config.sh    # neovim setup
-├── init.lua          # neovim config source
-├── tools-config.sh   # fzf, bat, lazygit, btop setup
-├── git-config.sh     # git setup
-├── gitconfig         # git config source
+├── install-all.sh              # one-command full setup
+├── setup.sh                    # oh-my-posh prompt setup
+├── eza-config.sh               # eza aliases setup
+├── tools-config.sh             # fzf, bat, lazygit, btop, zsh plugins
+├── git-config.sh               # git setup
+├── gitconfig                   # git config source
+├── tmux-config.sh              # tmux setup
+├── tmux.conf                   # tmux config source
+├── now-playing.sh              # now-playing script for tmux status bar
+├── nvim-config.sh              # neovim setup
+├── init.lua                    # neovim config source
+├── zshrc-config.sh             # zsh setup
+├── zshrc                       # zsh config source
+├── iterm-config.sh             # iTerm2 setup
+├── velvet.iterm2profile.json   # iTerm2 velvet color profile
+├── ssh-config.sh               # SSH setup
+├── ssh_config                  # SSH config source
+├── Brewfile                    # all Homebrew packages
 └── README.md
 ```
