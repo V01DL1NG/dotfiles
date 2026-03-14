@@ -19,7 +19,13 @@ setopt share_history         # share history across sessions
 setopt append_history        # append instead of overwrite
 
 # Completion
-autoload -Uz compinit && compinit
+autoload -Uz compinit
+# Only regenerate completion dump once per 24 hours (much faster shell starts)
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
 zstyle ':completion:*' menu select                    # arrow-key completion menu
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'  # case-insensitive completion
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" # colored completion
@@ -27,8 +33,7 @@ zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}" # colored completion
 # Line editing
 bindkey -v                 # vi keybindings (esc to enter normal mode)
 KEYTIMEOUT=1               # near-instant esc response (10ms)
-bindkey '^[[A' history-search-backward  # up arrow searches history
-bindkey '^[[B' history-search-forward   # down arrow searches history
+# (up/down bound to history-substring-search in plugins section below)
 
 # cursor shape changes with vi mode (beam=insert, block=normal)
 zle-keymap-select() {
@@ -46,7 +51,20 @@ zle -N zle-line-init
 # PROMPT
 # ===========================================================================
 
-eval "$(oh-my-posh init zsh --config '~/oh-my-posh/velvet.omp.json')"
+# Download velvet theme if missing
+OMP_THEME="$HOME/oh-my-posh/velvet.omp.json"
+if [ ! -f "$OMP_THEME" ]; then
+  mkdir -p "$HOME/oh-my-posh"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "$OMP_THEME" \
+      "https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/velvet.omp.json" \
+      || echo "warn: failed to download oh-my-posh theme; prompt may be plain"
+  else
+    echo "warn: curl not found; place velvet.omp.json at $OMP_THEME"
+  fi
+fi
+
+eval "$(oh-my-posh init zsh --config "$OMP_THEME")"
 
 # ===========================================================================
 # ALIASES
@@ -99,6 +117,12 @@ if command -v fzf >/dev/null 2>&1; then
   export FZF_CTRL_T_OPTS="--preview 'bat --color=always --style=numbers --line-range=:200 {} 2>/dev/null || echo {}'"
   # ctrl-r: history search (already works, just styling)
   export FZF_CTRL_R_OPTS="--layout=reverse"
+  # use fd for file/dir finding if available (faster, respects .gitignore)
+  if command -v fd >/dev/null 2>&1; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+    export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+  fi
 fi
 
 # ===========================================================================
@@ -110,6 +134,16 @@ if [ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
   source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
   ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#4c1f5e"
   ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+fi
+
+# History substring search — must load BEFORE syntax-highlighting
+if [ -f /opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh ]; then
+  source /opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+  bindkey '^[[A' history-substring-search-up    # up arrow
+  bindkey '^[[B' history-substring-search-down  # down arrow
+  # also bind k/j in vi normal mode
+  bindkey -M vicmd 'k' history-substring-search-up
+  bindkey -M vicmd 'j' history-substring-search-down
 fi
 
 # Syntax highlighting (velvet theme colors)
@@ -128,6 +162,25 @@ if [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh 
   ZSH_HIGHLIGHT_STYLES[redirection]="fg=#69307A"
   ZSH_HIGHLIGHT_STYLES[globbing]="fg=#E4F34A"
   ZSH_HIGHLIGHT_STYLES[comment]="fg=#341948"
+fi
+
+# ===========================================================================
+# SMART TOOLS
+# ===========================================================================
+
+# zoxide — smarter cd (learns most-visited dirs, use: z <partial-name>)
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
+
+# atuin — shell history database (replaces ctrl-r with timestamps, exit codes, etc.)
+if command -v atuin >/dev/null 2>&1; then
+  eval "$(atuin init zsh)"
+fi
+
+# direnv — auto-load/unload .envrc per directory
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
 fi
 
 # ===========================================================================

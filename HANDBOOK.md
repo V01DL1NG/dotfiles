@@ -30,11 +30,21 @@ I/A         insert at start / append at end
 ### History
 
 ```
-Up/Down     search history by what you've typed so far
-Ctrl-R      fuzzy search full history (via fzf)
+Up/Down     search history matching anywhere in the command (not just prefix)
+Ctrl-R      open atuin — full history TUI with timestamps, exit codes, directory
 ```
 
 Prefix a command with a space to keep it out of history.
+
+Inside atuin (`Ctrl-R`):
+
+```
+Type        filter results
+Ctrl-R      toggle scope: global history vs current directory only
+Ctrl-D      delete entry
+Enter       run selected command
+Esc         cancel
+```
 
 ### Directory Navigation
 
@@ -45,6 +55,18 @@ cd -            toggle between last two directories
 cd -2           jump to 2nd directory in stack (autopushd)
 dirs -v         show full directory stack with indices
 ```
+
+### zoxide (smart cd)
+
+zoxide learns which directories you visit most often. After a few uses it lets you jump anywhere with a partial name:
+
+```
+z proj          cd to ~/code/projects (or wherever you go most)
+z dot conf      jumps to the best match containing "dot" and "conf"
+zi              interactive picker — fzf over your frecency list
+```
+
+After a few days you'll stop thinking about paths entirely.
 
 ### Autosuggestions
 
@@ -62,19 +84,55 @@ Commands are colored as you type:
 - **Bold lavender** — valid command/alias
 - **Violet underline** — unknown command (typo?)
 - **Cyan** — quoted strings
-- **Yellow** — globs (*.txt)
+- **Yellow** — globs (`*.txt`)
+
+---
+
+## zoxide (smart cd)
+
+zoxide tracks how often and how recently you visit each directory (frecency). The more you use a directory, the easier it is to jump to:
+
+```bash
+z dotfiles          # jumps to ~/code/dotfiles
+z code proj         # matches a dir containing both "code" and "proj"
+zi                  # interactive: fzf picker over your history
+```
+
+You still use `cd` normally — zoxide learns from every directory change.
+
+---
+
+## direnv
+
+Place a `.envrc` file in any project directory — it loads automatically on `cd` and unloads when you leave.
+
+```bash
+# .envrc example
+export DATABASE_URL=postgres://localhost/mydb
+export API_KEY=dev-key-123
+export PATH="$PWD/bin:$PATH"
+layout python3          # auto-activate a .venv virtualenv
+```
+
+```
+direnv allow    permit the current .envrc (required on first use or after edits)
+direnv deny     block the current .envrc
+direnv edit     open .envrc in $EDITOR, then auto-allow on save
+direnv status   show what is currently loaded
+```
+
+Never manually `source .env` again. When you `cd` out of the directory, the variables are unloaded automatically.
 
 ---
 
 ## fzf (Fuzzy Finder)
 
-Three keybindings you should use constantly:
-
 ```
-Ctrl-R      fuzzy search command history
-Ctrl-T      fuzzy find files (with bat preview on the right)
+Ctrl-T      fuzzy find files (fd-powered, bat preview on the right)
 Alt-C       fuzzy cd into a directory (Option+C on Mac)
 ```
+
+`Ctrl-R` is now handled by **atuin** (see History above) for a richer experience.
 
 Inside fzf:
 
@@ -86,7 +144,7 @@ Esc         cancel
 Tab         multi-select (where supported)
 ```
 
-Tip: `Ctrl-R` is the most useful — start typing any part of a past command.
+`Ctrl-T` uses `fd` under the hood — it respects `.gitignore` and is much faster than `find` on large repos.
 
 ---
 
@@ -357,6 +415,21 @@ Type {          get {}  with cursor inside
 Backspace       deletes both if empty pair
 ```
 
+### Git Hunks (gitsigns)
+
+Change indicators appear in the gutter (`+` added, `~` changed, `-` deleted). Navigate and act on them without leaving the file:
+
+```
+]c              next hunk
+[c              previous hunk
+Space hs        stage hunk under cursor
+Space hr        reset hunk (discard changes)
+Space hb        inline git blame for current line
+Space hd        diff this file against HEAD
+```
+
+Tip: use `Space hs` to stage individual hunks, then commit — a cleaner alternative to `git add -p` without leaving nvim.
+
 ### Mason (LSP manager)
 
 ```
@@ -403,13 +476,18 @@ Then just `ssh myserver` instead of `ssh -p 2222 admin@192.168.1.100`.
 
 ## iTerm2
 
-The Velvet profile is installed as a dynamic profile. To activate:
+Two dynamic profiles are installed:
 
+**Velvet** — solid deep-purple background, full velvet/sakura palette, FiraCode Nerd Font.
+
+**Velvet Glass** — same colors, 20% transparent background with blur. Good for referencing docs behind the window.
+
+To activate a profile:
 1. Preferences > Profiles
-2. Select "Velvet"
+2. Select the profile
 3. Other Actions > Set as Default
 
-The colors match your oh-my-posh prompt, tmux status bar, and fzf.
+Both profiles inherit their colors from Velvet, so changing a color in Velvet automatically updates Velvet Glass.
 
 ---
 
@@ -418,13 +496,13 @@ The colors match your oh-my-posh prompt, tmux status bar, and fzf.
 Recreate your full tool setup on a new Mac:
 
 ```bash
-brew bundle install --file=~/code/shell-config/Brewfile
+brew bundle install --file=~/code/dotfiles/Brewfile
 ```
 
 Update the Brewfile after installing new packages:
 
 ```bash
-brew bundle dump --file=~/code/shell-config/Brewfile --force
+brew bundle dump --file=~/code/dotfiles/Brewfile --force
 ```
 
 ---
@@ -433,10 +511,14 @@ brew bundle dump --file=~/code/shell-config/Brewfile --force
 
 | Task | Command |
 |------|---------|
-| Find a past command | `Ctrl-R` |
+| Jump to a recent directory | `z <partial-name>` |
+| Find a past command | `Ctrl-R` (atuin) |
 | Find a file | `Ctrl-T` or `Space ff` (in nvim) |
 | Search file contents | `Space fg` (in nvim) |
+| Load project env vars | `direnv allow` (once per `.envrc`) |
 | Git status | `git st` or `lg` (lazygit) |
+| Stage a single hunk | `Space hs` (in nvim) |
+| Blame current line | `Space hb` (in nvim) |
 | System resources | `top` (btop) or `meminfo` |
 | Split terminal | `Ctrl+a \|` or `Ctrl+a -` |
 | Save tmux session | `Ctrl+a Ctrl+s` |

@@ -1,4 +1,4 @@
-# shell-config
+# dotfiles
 
 Dotfiles and setup scripts for macOS terminal environment. Each config has an idempotent setup script that installs dependencies via Homebrew, backs up existing configs, and copies files into place.
 
@@ -6,14 +6,14 @@ Dotfiles and setup scripts for macOS terminal environment. Each config has an id
 
 ```bash
 # Clone and install everything at once
-git clone <repo-url> ~/code/shell-config
-cd ~/code/shell-config
+git clone https://github.com/V01DL1NG/dotfiles.git ~/code/dotfiles
+cd ~/code/dotfiles
 ./install-all.sh
 
 # Or run individual setup scripts
 ./setup.sh          # oh-my-posh prompt
 ./eza-config.sh     # eza (modern ls)
-./tools-config.sh   # fzf, bat, lazygit, btop, zsh plugins
+./tools-config.sh   # fzf, bat, lazygit, btop, zsh plugins + smart tools
 ./git-config.sh     # gitconfig + delta
 ./tmux-config.sh    # tmux + now-playing
 ./nvim-config.sh    # neovim + LSP servers
@@ -30,11 +30,13 @@ cd ~/code/shell-config
 |---------|---------|
 | Vi mode | `Esc` for normal mode, cursor changes shape |
 | History | 50k lines, deduplicated, shared across sessions |
-| Completion | Arrow-key menu, case-insensitive |
-| Navigation | `autocd`, `autopushd` with directory stack |
-| fzf | `Ctrl-R` history search, `Ctrl-T` file picker with preview |
+| History search | `Up/Down` matches anywhere in command; `Ctrl-R` opens atuin TUI |
+| Completion | Arrow-key menu, case-insensitive, cached dump (fast starts) |
+| Navigation | `autocd`, `autopushd`, zoxide smart jump (`z <partial>`) |
+| fzf | `Ctrl-T` file picker (fd-powered, bat preview), `Alt-C` dir picker |
 | Autosuggestions | Ghost text from history as you type |
 | Syntax highlighting | Commands colored in velvet theme palette |
+| direnv | Auto-loads/unloads `.envrc` on `cd` |
 
 **Aliases:**
 
@@ -71,8 +73,8 @@ Plugin manager: **lazy.nvim** (auto-bootstraps on first launch)
 | LSP | Mason auto-installs lua_ls, pyright, ts_ls with nvim-cmp completion |
 | Keybinding help | which-key popup on `<Space>` |
 | Auto-pairs | Auto-close brackets, quotes, parentheses |
-| Motion | Leap.nvim |
-| Git | Fugitive + Gitsigns |
+| Motion | Leap.nvim (`s{char}{char}`) |
+| Git | Fugitive + Gitsigns (hunk staging, blame, diff in-buffer) |
 | Editing | vim-commentary, vim-surround, vim-repeat |
 | Visual | indent-blankline, vim-illuminate |
 
@@ -92,6 +94,11 @@ Plugin manager: **lazy.nvim** (auto-bootstraps on first launch)
 | `<Space>rn` | Rename symbol (LSP) |
 | `<Space>ca` | Code action (LSP) |
 | `[d` / `]d` | Previous/next diagnostic |
+| `]c` / `[c` | Next/previous git hunk |
+| `<Space>hs` | Stage hunk |
+| `<Space>hr` | Reset hunk |
+| `<Space>hb` | Blame line |
+| `<Space>hd` | Diff this file |
 
 ### Tmux (`tmux.conf` / `tmux-config.sh`)
 
@@ -149,12 +156,34 @@ Installs via Homebrew:
 
 | Tool | Purpose |
 |------|---------|
-| **fzf** | Fuzzy finder (history, files, directories) |
+| **fzf** | Fuzzy finder (`Ctrl-T` files, `Alt-C` dirs) |
+| **fd** | Fast, gitignore-aware find — powers fzf file search |
 | **bat** | Syntax-highlighted `cat` replacement |
 | **lazygit** | Terminal UI for git |
 | **btop** | System monitor |
+| **zoxide** | Smart `cd` — learns your most-visited dirs (`z <partial>`) |
+| **atuin** | Shell history database — `Ctrl-R` with timestamps, exit codes, directory context |
+| **direnv** | Auto-loads `.envrc` per directory |
 | **zsh-autosuggestions** | Ghost text from history |
 | **zsh-syntax-highlighting** | Command coloring (velvet theme) |
+| **zsh-history-substring-search** | Up/Down matches anywhere in command, not just prefix |
+
+### iTerm2 (`velvet.iterm2profile.json` / `iterm-config.sh`)
+
+Two dynamic profiles installed automatically:
+
+| Profile | Description |
+|---------|-------------|
+| **Velvet** | Solid background, full velvet/sakura palette, FiraCode Nerd Font |
+| **Velvet Glass** | Same colors with 20% transparency and background blur |
+
+To activate a profile: Preferences > Profiles > select profile > Other Actions > Set as Default.
+
+### Prompt (`velvet.omp.json` / `setup.sh`)
+
+oh-my-posh with a custom velvet theme. The `zshrc` auto-downloads `velvet.omp.json` from this repo on first run if the file is missing — no manual setup needed.
+
+Segments: OS icon → path → git branch/status/stash → execution time → exit status. Right side shows active language runtime versions (Python, Go, Node, Ruby, Java).
 
 ### Theme
 
@@ -169,29 +198,29 @@ All configs use a consistent **velvet/sakura** color palette:
 | Bright violet | `#69307A` | Active borders, highlights |
 | Lavender | `#EFDCF9` | Foreground text |
 
-**Recommended iTerm colors:** Background `#0E050F`, Foreground `#EFDCF9`, Cursor `#69307A`, Selection `#341948`
-
 ## File Structure
 
 ```
-shell-config/
-├── install-all.sh              # one-command full setup
-├── setup.sh                    # oh-my-posh prompt setup
-├── eza-config.sh               # eza aliases setup
-├── tools-config.sh             # fzf, bat, lazygit, btop, zsh plugins
-├── git-config.sh               # git setup
-├── gitconfig                   # git config source
-├── tmux-config.sh              # tmux setup
-├── tmux.conf                   # tmux config source
-├── now-playing.sh              # now-playing script for tmux status bar
-├── nvim-config.sh              # neovim setup
-├── init.lua                    # neovim config source
-├── zshrc-config.sh             # zsh setup
-├── zshrc                       # zsh config source
-├── iterm-config.sh             # iTerm2 setup
-├── velvet.iterm2profile.json   # iTerm2 velvet color profile
-├── ssh-config.sh               # SSH setup
-├── ssh_config                  # SSH config source
-├── Brewfile                    # all Homebrew packages
+dotfiles/
+├── install-all.sh                  # one-command full setup
+├── setup.sh                        # oh-my-posh prompt setup
+├── eza-config.sh                   # eza aliases setup
+├── tools-config.sh                 # all terminal tools
+├── git-config.sh                   # git setup
+├── gitconfig                       # git config source
+├── tmux-config.sh                  # tmux setup
+├── tmux.conf                       # tmux config source
+├── now-playing.sh                  # now-playing script for tmux status bar
+├── nvim-config.sh                  # neovim setup
+├── init.lua                        # neovim config source
+├── zshrc-config.sh                 # zsh setup
+├── zshrc                           # zsh config source
+├── iterm-config.sh                 # iTerm2 setup
+├── velvet.iterm2profile.json       # iTerm2 Velvet + Velvet Glass profiles
+├── velvet.omp.json                 # oh-my-posh velvet theme
+├── ssh-config.sh                   # SSH setup
+├── ssh_config                      # SSH config source
+├── Brewfile                        # all Homebrew packages
+├── HANDBOOK.md                     # practical usage guide for every tool
 └── README.md
 ```

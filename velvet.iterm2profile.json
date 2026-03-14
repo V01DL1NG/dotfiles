@@ -165,9 +165,20 @@
         "Alpha Component": 1,
         "Color Space": "sRGB"
       },
+      "Normal Font": "FiraCodeNFM-Reg 13",
+      "Non Ascii Font": "FiraCodeNFM-Reg 13",
+      "Use Non-ASCII Font": true,
       "Transparency": 0.0,
       "Blur": false,
       "Minimum Contrast": 0.0
+    },
+    {
+      "Name": "Velvet Glass",
+      "Guid": "velvet-glass-theme-002",
+      "Dynamic Profile Parent Name": "Velvet",
+      "Transparency": 0.2,
+      "Blur": true,
+      "Blur Radius": 8.0
     }
   ]
 }

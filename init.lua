@@ -329,6 +329,16 @@ local plugins = {
           topdelete = { text = "‾" },
           changedelete = { text = "~" },
         },
+        on_attach = function(bufnr)
+          local gs = require("gitsigns")
+          local opts = { buffer = bufnr }
+          map("n", "]c", gs.next_hunk, opts)
+          map("n", "[c", gs.prev_hunk, opts)
+          map("n", "<Leader>hs", gs.stage_hunk, opts)
+          map("n", "<Leader>hr", gs.reset_hunk, opts)
+          map("n", "<Leader>hb", gs.blame_line, opts)
+          map("n", "<Leader>hd", gs.diffthis, opts)
+        end,
       })
     end,
   },
@@ -354,6 +364,11 @@ local plugins = {
         { "<Leader>/", desc = "Toggle comment" },
         { "<Leader>rn", desc = "Rename symbol" },
         { "<Leader>ca", desc = "Code action" },
+        { "<Leader>h",  group = "Git hunks" },
+        { "<Leader>hs", desc = "Stage hunk" },
+        { "<Leader>hr", desc = "Reset hunk" },
+        { "<Leader>hb", desc = "Blame line" },
+        { "<Leader>hd", desc = "Diff this" },
       })
     end,
   },
