@@ -13,6 +13,15 @@ Brewfile.personal
 id_*
 *.pem
 *.key
+*.pub
+
+# Secrets and credentials
+.env
+.env.*
+*.secret
+*_token
+*_secret
+atuin.key
 
 # Editor artifacts
 *.swp
