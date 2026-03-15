@@ -1,6 +1,6 @@
 # dotfiles
 
-Dotfiles and setup scripts for macOS terminal environment. Each config has an idempotent setup script that installs dependencies via Homebrew, backs up existing configs, and copies files into place.
+Dotfiles and setup scripts for macOS terminal environment. Each config has an idempotent setup script that installs dependencies via Homebrew, backs up any existing config, and symlinks the file from this repo — so editing the live config is editing the repo directly.
 
 ## Quick Start
 
@@ -181,7 +181,7 @@ To activate a profile: Preferences > Profiles > select profile > Other Actions >
 
 ### Prompt (`velvet.omp.json` / `setup.sh`)
 
-oh-my-posh with a custom velvet theme. The `zshrc` auto-downloads `velvet.omp.json` from this repo on first run if the file is missing — no manual setup needed.
+oh-my-posh with a custom velvet theme. `setup.sh` symlinks `velvet.omp.json` from the repo to `~/oh-my-posh/velvet.omp.json`. The `zshrc` also has a curl fallback that downloads it automatically if the file is missing when the shell starts.
 
 Segments: OS icon → path → git branch/status/stash → execution time → exit status. Right side shows active language runtime versions (Python, Go, Node, Ruby, Java).
 
@@ -221,6 +221,7 @@ dotfiles/
 ├── ssh-config.sh                   # SSH setup
 ├── ssh_config                      # SSH config source
 ├── Brewfile                        # all Homebrew packages
+├── test.sh                         # test suite — verifies tools, symlinks, plugins
 ├── HANDBOOK.md                     # practical usage guide for every tool
 └── README.md
 ```
