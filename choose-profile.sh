@@ -37,6 +37,8 @@ header()  { echo -e "\n${BOLD}${PURPLE}${1}${RESET}"; }
 declare -a PROFILES=(
   "velvet|Velvet|Oh-My-Posh prompt · original velvet/sakura theme · powerline segments|oh-my-posh"
   "p10k-velvet|P10k Velvet|Powerlevel10k prompt · velvet color palette blend · faster instant prompt|powerlevel10k"
+  "catppuccin|Catppuccin|Powerlevel10k prompt · Catppuccin Mocha palette · mauve accents|powerlevel10k"
+  "minimal|Minimal|Plain zsh PROMPT · path + git branch · no prompt engine · server-friendly|"
 )
 
 # ── Helper: back up a file if it exists ──────────────────────────────────────
@@ -94,7 +96,7 @@ install_velvet() {
     warn "iTerm2 not detected — skipping iTerm2 profile"
   fi
 
-  _post_install "Velvet" "Velvet"
+  _post_install "Velvet" "oh-my-posh" "Velvet"
 }
 
 # ── Install: p10k-velvet ──────────────────────────────────────────────────────
@@ -132,32 +134,91 @@ install_p10k_velvet() {
     warn "iTerm2 not detected — skipping iTerm2 profile"
   fi
 
-  _post_install "P10k Velvet" "P10k Velvet"
+  _post_install "P10k Velvet" "p10k" "P10k Velvet"
+}
+
+# ── Install: catppuccin ───────────────────────────────────────────────────────
+install_catppuccin() {
+  local profile_dir="$PROFILES_DIR/catppuccin"
+
+  header "Installing: Catppuccin"
+
+  # Check / install powerlevel10k
+  if ! [ -f /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme ] && \
+     ! [ -f /usr/share/powerlevel10k/powerlevel10k.zsh-theme ]; then
+    warn "powerlevel10k not found"
+    if command -v brew >/dev/null 2>&1; then
+      info "Installing powerlevel10k via Homebrew..."
+      brew install powerlevel10k
+    else
+      error "Homebrew not found — install powerlevel10k manually: brew install powerlevel10k"
+      exit 1
+    fi
+  fi
+
+  # zshrc
+  install_file "$profile_dir/zshrc" "$HOME/.zshrc"
+
+  # p10k config
+  install_file "$profile_dir/.p10k.zsh" "$HOME/.p10k.zsh"
+
+  # iTerm2 dynamic profile
+  local iterm_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+  if [ -d "$(dirname "$iterm_dir")" ]; then
+    mkdir -p "$iterm_dir"
+    install_file "$profile_dir/iterm.json" "$iterm_dir/catppuccin.json"
+    info "iTerm2 profiles available: Catppuccin Mocha, Catppuccin Mocha Glass"
+  else
+    warn "iTerm2 not detected — skipping iTerm2 profile"
+  fi
+
+  _post_install "Catppuccin" "p10k" "Catppuccin Mocha"
+}
+
+# ── Install: minimal ─────────────────────────────────────────────────────────
+install_minimal() {
+  local profile_dir="$PROFILES_DIR/minimal"
+
+  header "Installing: Minimal"
+
+  # zshrc only — no prompt engine, no iTerm2 profile
+  install_file "$profile_dir/zshrc" "$HOME/.zshrc"
+
+  _post_install "Minimal" "plain" ""
 }
 
 # ── Post-install message ──────────────────────────────────────────────────────
+# Args: display_name  engine  iterm_profile_name
 _post_install() {
   local name="$1"
-  local iterm_profile="$2"
+  local engine="$2"
+  local iterm_profile="$3"
 
   echo ""
   echo -e "${BOLD}${GREEN}Profile '${name}' installed.${RESET}"
   echo ""
   echo "  Next steps:"
   echo "    1.  source ~/.zshrc          (or open a new terminal)"
-  if [ -d "$HOME/Library/Application Support/iTerm2" ]; then
+  if [ -n "$iterm_profile" ] && [ -d "$HOME/Library/Application Support/iTerm2" ]; then
     echo "    2.  In iTerm2 → Preferences → Profiles → set '${iterm_profile}' as default"
   fi
   echo ""
   echo "  Your config files are local copies — edit them freely:"
   echo "    ~/.zshrc"
-  if [ "$1" = "Velvet" ]; then
-    echo "    ~/oh-my-posh/velvet.omp.json"
-  else
-    echo "    ~/.p10k.zsh"
-    echo ""
-    echo "  Tip: run 'p10k configure' anytime to interactively tweak the prompt."
-  fi
+  case "$engine" in
+    oh-my-posh)
+      echo "    ~/oh-my-posh/velvet.omp.json"
+      ;;
+    p10k)
+      echo "    ~/.p10k.zsh"
+      echo ""
+      echo "  Tip: run 'p10k configure' anytime to interactively tweak the prompt."
+      ;;
+    plain)
+      echo ""
+      echo "  Tip: edit the PROMPT line in ~/.zshrc to change the prompt appearance."
+      ;;
+  esac
   echo ""
 }
 
@@ -210,9 +271,11 @@ run_profile() {
   case "$1" in
     velvet)      install_velvet ;;
     p10k-velvet) install_p10k_velvet ;;
+    catppuccin)  install_catppuccin ;;
+    minimal)     install_minimal ;;
     *)
       error "Unknown profile: $1"
-      error "Available profiles: velvet, p10k-velvet"
+      error "Available profiles: velvet, p10k-velvet, catppuccin, minimal"
       exit 1
       ;;
   esac

@@ -301,6 +301,7 @@ cmd_export() {
   case "$engine" in
     powerlevel10k) base="p10k-velvet"; tools="powerlevel10k" ;;
     oh-my-posh)    base="velvet";      tools="oh-my-posh"    ;;
+    plain)         base="minimal";     tools=""               ;;
     *)             base="unknown";     tools=""               ;;
   esac
 
@@ -427,6 +428,30 @@ cmd_pack() {
       success "packed iterm.json"
       ;;
 
+    catppuccin)
+      tools="powerlevel10k"
+      desc="Powerlevel10k prompt with Catppuccin Mocha color palette"
+      base="catppuccin"
+
+      entries+=( "\$HOME/.zshrc|$(b64_file "$profile_dir/zshrc")" )
+      success "packed zshrc"
+
+      entries+=( "\$HOME/.p10k.zsh|$(b64_file "$profile_dir/.p10k.zsh")" )
+      success "packed .p10k.zsh"
+
+      entries+=( "\$HOME/Library/Application Support/iTerm2/DynamicProfiles/catppuccin.json|$(b64_file "$profile_dir/iterm.json")" )
+      success "packed iterm.json"
+      ;;
+
+    minimal)
+      tools=""
+      desc="Plain zsh prompt — no prompt engine required, full tools and aliases"
+      base="minimal"
+
+      entries+=( "\$HOME/.zshrc|$(b64_file "$profile_dir/zshrc")" )
+      success "packed zshrc"
+      ;;
+
     *)
       # Generic fallback: pack all files into ~/.filename
       tools=""
@@ -479,6 +504,8 @@ cmd_list() {
   local -A descs=(
     [velvet]="Oh-My-Posh · velvet/sakura theme"
     [p10k-velvet]="Powerlevel10k · velvet color blend"
+    [catppuccin]="Powerlevel10k · Catppuccin Mocha"
+    [minimal]="plain zsh prompt · no engine"
   )
   for d in "$PROFILES_DIR"/*/; do
     [ -d "$d" ] || continue
