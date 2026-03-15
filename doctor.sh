@@ -1,0 +1,284 @@
+#!/usr/bin/env bash
+# ============================================================================
+# doctor.sh — dotfiles health check
+#
+# Usage:
+#   ./doctor.sh
+#
+# Exit code 1 if any checks fail.
+# ============================================================================
+set -euo pipefail
+
+# ── Colors ────────────────────────────────────────────────────────────────────
+BOLD='\033[1m'
+DIM='\033[2m'
+PURPLE='\033[38;2;105;48;122m'
+LAVENDER='\033[38;2;239;220;249m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+info()    { echo -e "  ${LAVENDER}${1}${RESET}"; }
+success() { echo -e "  ${GREEN}✓${RESET}  ${1}"; }
+warn()    { echo -e "  ${YELLOW}!${RESET}  ${1}"; }
+error()   { echo -e "  ${RED}✗${RESET}  ${1}"; }
+header()  { echo -e "\n${BOLD}${PURPLE}${1}${RESET}"; }
+
+# ── Counters ──────────────────────────────────────────────────────────────────
+PASS=0
+WARN=0
+FAIL=0
+
+pass() { success "$1"; (( PASS++ )) || true; }
+warn_count() { warn "$1"; (( WARN++ )) || true; }
+fail() { error "$1"; (( FAIL++ )) || true; }
+
+# ── Banner ────────────────────────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}${PURPLE}╔══════════════════════════════════════════════════╗${RESET}"
+echo -e "${BOLD}${PURPLE}║           Dotfiles Doctor                        ║${RESET}"
+echo -e "${BOLD}${PURPLE}╚══════════════════════════════════════════════════╝${RESET}"
+echo ""
+
+# ── Section: Homebrew ─────────────────────────────────────────────────────────
+section_brew() {
+  header "Homebrew"
+
+  if command -v brew >/dev/null 2>&1; then
+    pass "brew found: $(brew --version | head -1)"
+  else
+    fail "brew not found — install from https://brew.sh"
+  fi
+}
+
+# ── Section: Prompt engine ────────────────────────────────────────────────────
+section_prompt() {
+  header "Shell Prompt"
+
+  local zshrc="$HOME/.zshrc"
+  local engine="unknown"
+
+  if [ -f "$zshrc" ]; then
+    if grep -q 'powerlevel10k' "$zshrc" 2>/dev/null; then
+      engine="powerlevel10k"
+    elif grep -q 'oh-my-posh' "$zshrc" 2>/dev/null; then
+      engine="oh-my-posh"
+    elif grep -q 'PROMPT=' "$zshrc" 2>/dev/null; then
+      engine="plain"
+    fi
+  fi
+
+  info "Detected prompt engine: ${engine}"
+
+  case "$engine" in
+    oh-my-posh)
+      if command -v oh-my-posh >/dev/null 2>&1; then
+        pass "oh-my-posh binary found: $(oh-my-posh --version 2>/dev/null | head -1)"
+      else
+        fail "oh-my-posh binary not found (brew install jandedobbeleer/oh-my-posh/oh-my-posh)"
+      fi
+      local theme="$HOME/oh-my-posh/velvet.omp.json"
+      if [ -f "$theme" ]; then
+        pass "theme file found: $theme"
+      else
+        fail "theme file missing: $theme"
+      fi
+      ;;
+    powerlevel10k)
+      local p10k_theme="/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme"
+      if [ -f "$p10k_theme" ]; then
+        pass "powerlevel10k theme found: $p10k_theme"
+      else
+        fail "powerlevel10k theme not found: $p10k_theme (brew install powerlevel10k)"
+      fi
+      local p10k_cfg="$HOME/.p10k.zsh"
+      if [ -f "$p10k_cfg" ]; then
+        pass "p10k config found: $p10k_cfg"
+      else
+        fail "p10k config missing: $p10k_cfg (run: p10k configure)"
+      fi
+      ;;
+    plain)
+      pass "Plain PROMPT= detected in .zshrc"
+      ;;
+    *)
+      warn_count "Could not detect prompt engine in $zshrc"
+      ;;
+  esac
+}
+
+# ── Section: CLI tools ────────────────────────────────────────────────────────
+section_tools() {
+  header "CLI Tools"
+
+  local tools=(fzf fd bat eza lazygit btop zoxide atuin direnv)
+
+  for tool in "${tools[@]}"; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      pass "$tool"
+    else
+      fail "$tool not found (brew install $tool)"
+    fi
+  done
+
+  # delta is shipped as the 'git-delta' brew package but the binary is `delta`
+  if command -v delta >/dev/null 2>&1; then
+    pass "delta"
+  else
+    fail "delta not found (brew install git-delta)"
+  fi
+}
+
+# ── Section: Zsh plugins ──────────────────────────────────────────────────────
+section_plugins() {
+  header "Zsh Plugins"
+
+  local plugins=(
+    "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    "/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+    "/opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh"
+  )
+
+  for plugin in "${plugins[@]}"; do
+    local name
+    name="$(basename "$plugin" .zsh)"
+    if [ -f "$plugin" ]; then
+      pass "$name"
+    else
+      fail "$name not found at $plugin (brew install ${name})"
+    fi
+  done
+}
+
+# ── Section: Config files ─────────────────────────────────────────────────────
+section_configs() {
+  header "Config Files"
+
+  # ~/.zshrc — local copy is good; symlink is a warning; missing is a failure
+  local zshrc="$HOME/.zshrc"
+  if [ -L "$zshrc" ]; then
+    warn_count "~/.zshrc is still a symlink — run choose-profile.sh to install a local copy"
+  elif [ -f "$zshrc" ]; then
+    pass "~/.zshrc (local copy)"
+  else
+    fail "~/.zshrc is missing"
+  fi
+
+  # Remaining configs — symlink or regular file are both acceptable
+  local configs=(
+    "$HOME/.gitconfig"
+    "$HOME/.tmux.conf"
+    "$HOME/.config/nvim/init.lua"
+  )
+
+  for cfg in "${configs[@]}"; do
+    local label="${cfg/$HOME/\~}"
+    if [ -L "$cfg" ]; then
+      pass "$label (symlink)"
+    elif [ -f "$cfg" ]; then
+      pass "$label (local copy)"
+    else
+      fail "$label is missing"
+    fi
+  done
+}
+
+# ── Section: Git identity ─────────────────────────────────────────────────────
+section_git() {
+  header "Git Identity"
+
+  local git_name
+  git_name="$(git config --global user.name 2>/dev/null || true)"
+  if [ -n "$git_name" ]; then
+    pass "user.name = $git_name"
+  else
+    warn_count "git config --global user.name is not set"
+  fi
+
+  local git_email
+  git_email="$(git config --global user.email 2>/dev/null || true)"
+  if [ -n "$git_email" ]; then
+    pass "user.email = $git_email"
+  else
+    warn_count "git config --global user.email is not set"
+  fi
+}
+
+# ── Section: Nerd Font ────────────────────────────────────────────────────────
+section_font() {
+  header "Nerd Font (FiraCode)"
+
+  if ls ~/Library/Fonts/FiraCode*.ttf \
+        ~/Library/Fonts/FiraCodeNerdFont*.ttf \
+        /Library/Fonts/FiraCode*.ttf \
+        2>/dev/null | grep -q .; then
+    pass "FiraCode Nerd Font found"
+  else
+    warn_count "FiraCode Nerd Font not found — install with: brew install --cask font-fira-code-nerd-font"
+  fi
+}
+
+# ── Section: iTerm2 ───────────────────────────────────────────────────────────
+section_iterm2() {
+  header "iTerm2 Dynamic Profiles"
+
+  local iterm_profiles_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+
+  if [ -d "$iterm_profiles_dir" ]; then
+    pass "DynamicProfiles directory exists"
+    if ls "$iterm_profiles_dir"/*.json >/dev/null 2>&1; then
+      local count
+      count="$(ls "$iterm_profiles_dir"/*.json 2>/dev/null | wc -l | tr -d ' ')"
+      pass "$count .json profile(s) installed"
+    else
+      warn_count "No .json profiles found in DynamicProfiles — run choose-profile.sh to install"
+    fi
+  else
+    warn_count "iTerm2 DynamicProfiles directory not found — is iTerm2 installed?"
+  fi
+}
+
+# ── Section: Roles ────────────────────────────────────────────────────────────
+section_roles() {
+  header "Shell Roles"
+
+  local zshrc="$HOME/.zshrc"
+  local roles=(work personal server)
+
+  for role in "${roles[@]}"; do
+    if [ -f "$zshrc" ] && grep -q "# <<< role:${role} >>>" "$zshrc" 2>/dev/null; then
+      echo -e "  ${GREEN}●${RESET}  ${role} ${DIM}(active)${RESET}"
+    else
+      echo -e "  ${DIM}○  ${role} (inactive)${RESET}"
+    fi
+  done
+}
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+print_summary() {
+  echo ""
+  echo -e "${DIM}──────────────────────────────${RESET}"
+  echo -e "  ${GREEN}${PASS} passed${RESET}  ${YELLOW}${WARN} warnings${RESET}  ${RED}${FAIL} failed${RESET}"
+  echo ""
+}
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+main() {
+  section_brew
+  section_prompt
+  section_tools
+  section_plugins
+  section_configs
+  section_git
+  section_font
+  section_iterm2
+  section_roles
+  print_summary
+
+  if [ "$FAIL" -gt 0 ]; then
+    exit 1
+  fi
+}
+
+main
