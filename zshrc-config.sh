@@ -30,15 +30,15 @@ else
   echo "eza already installed"
 fi
 
-# Back up existing config
-if [ -f "$ZSHRC" ]; then
+# Back up existing config if it's a regular file (not already a symlink)
+if [ -f "$ZSHRC" ] && [ ! -L "$ZSHRC" ]; then
   echo "Backing up $ZSHRC to $BACKUP"
   cp "$ZSHRC" "$BACKUP"
 fi
 
-# Copy config into place
-echo "Installing zshrc to $ZSHRC"
-cp "$SCRIPT_DIR/zshrc" "$ZSHRC"
+# Symlink config into place
+echo "Linking zshrc → $ZSHRC"
+ln -sf "$SCRIPT_DIR/zshrc" "$ZSHRC"
 
 echo ""
 echo "Done. To apply:"

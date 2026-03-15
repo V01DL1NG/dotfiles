@@ -49,15 +49,15 @@ done
 # Create nvim config directory
 mkdir -p "$NVIM_DIR"
 
-# Back up existing config
-if [ -f "$NVIM_INIT" ]; then
+# Back up existing config if it's a regular file (not already a symlink)
+if [ -f "$NVIM_INIT" ] && [ ! -L "$NVIM_INIT" ]; then
   echo "Backing up $NVIM_INIT to $BACKUP"
   cp "$NVIM_INIT" "$BACKUP"
 fi
 
-# Copy config into place
-echo "Installing init.lua to $NVIM_INIT"
-cp "$SCRIPT_DIR/init.lua" "$NVIM_INIT"
+# Symlink config into place
+echo "Linking init.lua → $NVIM_INIT"
+ln -sf "$SCRIPT_DIR/init.lua" "$NVIM_INIT"
 
 echo ""
 echo "Done. To apply:"

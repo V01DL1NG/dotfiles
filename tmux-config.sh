@@ -30,20 +30,20 @@ else
   echo "nowplaying-cli already installed"
 fi
 
-# Back up existing config
-if [ -f "$TMUX_CONF" ]; then
+# Back up existing config if it's a regular file (not already a symlink)
+if [ -f "$TMUX_CONF" ] && [ ! -L "$TMUX_CONF" ]; then
   echo "Backing up $TMUX_CONF to $BACKUP"
   cp "$TMUX_CONF" "$BACKUP"
 fi
 
-# Copy config into place
-echo "Installing tmux.conf to $TMUX_CONF"
-cp "$SCRIPT_DIR/tmux.conf" "$TMUX_CONF"
+# Symlink configs into place
+echo "Linking tmux.conf → $TMUX_CONF"
+ln -sf "$SCRIPT_DIR/tmux.conf" "$TMUX_CONF"
 
-# Install now-playing script
 mkdir -p "$HOME/.tmux"
-cp "$SCRIPT_DIR/now-playing.sh" "$HOME/.tmux/now-playing.sh"
-chmod +x "$HOME/.tmux/now-playing.sh"
+echo "Linking now-playing.sh → $HOME/.tmux/now-playing.sh"
+ln -sf "$SCRIPT_DIR/now-playing.sh" "$HOME/.tmux/now-playing.sh"
+chmod +x "$SCRIPT_DIR/now-playing.sh"
 
 echo ""
 echo "Done. To apply:"

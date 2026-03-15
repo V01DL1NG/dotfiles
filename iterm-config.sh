@@ -13,9 +13,9 @@ fi
 # Create DynamicProfiles directory if it doesn't exist
 mkdir -p "$DYNAMIC_PROFILES_DIR"
 
-# Copy profile into place
-echo "Installing Velvet iTerm2 profile..."
-cp "$SCRIPT_DIR/velvet.iterm2profile.json" "$DYNAMIC_PROFILES_DIR/velvet.json"
+# Symlink profile into place (iTerm2 watches this directory live)
+echo "Linking Velvet iTerm2 profile..."
+ln -sf "$SCRIPT_DIR/velvet.iterm2profile.json" "$DYNAMIC_PROFILES_DIR/velvet.json"
 
 echo ""
 echo "Done. To activate:"

@@ -17,8 +17,8 @@ else
   echo "delta already installed"
 fi
 
-# Back up existing config
-if [ -f "$GITCONFIG" ]; then
+# Back up existing config if it's a regular file (not already a symlink)
+if [ -f "$GITCONFIG" ] && [ ! -L "$GITCONFIG" ]; then
   echo "Backing up $GITCONFIG to $BACKUP"
   cp "$GITCONFIG" "$BACKUP"
 fi
@@ -27,9 +27,9 @@ fi
 USER_NAME=$(git config --global user.name 2>/dev/null || true)
 USER_EMAIL=$(git config --global user.email 2>/dev/null || true)
 
-# Copy config into place
-echo "Installing gitconfig to $GITCONFIG"
-cp "$SCRIPT_DIR/gitconfig" "$GITCONFIG"
+# Symlink config into place
+echo "Linking gitconfig → $GITCONFIG"
+ln -sf "$SCRIPT_DIR/gitconfig" "$GITCONFIG"
 
 # Restore user identity
 if [ -n "$USER_NAME" ]; then

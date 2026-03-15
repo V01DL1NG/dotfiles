@@ -13,16 +13,16 @@ chmod 700 "$SSH_DIR"
 # Create sockets directory for ControlMaster
 mkdir -p "$SSH_DIR/sockets"
 
-# Back up existing config
-if [ -f "$SSH_CONFIG" ]; then
+# Back up existing config if it's a regular file (not already a symlink)
+if [ -f "$SSH_CONFIG" ] && [ ! -L "$SSH_CONFIG" ]; then
   echo "Backing up $SSH_CONFIG to $BACKUP"
   cp "$SSH_CONFIG" "$BACKUP"
 fi
 
-# Copy config into place
-echo "Installing ssh_config to $SSH_CONFIG"
-cp "$SCRIPT_DIR/ssh_config" "$SSH_CONFIG"
-chmod 600 "$SSH_CONFIG"
+# Symlink config into place (chmod target so SSH accepts it)
+echo "Linking ssh_config → $SSH_CONFIG"
+ln -sf "$SCRIPT_DIR/ssh_config" "$SSH_CONFIG"
+chmod 600 "$SCRIPT_DIR/ssh_config"
 
 # Generate ed25519 key if none exists
 if [ ! -f "$SSH_DIR/id_ed25519" ]; then
