@@ -7,6 +7,9 @@ echo "=================================="
 echo "  Shell Config - Full Setup"
 echo "=================================="
 echo ""
+echo "Tip: to choose a shell profile (velvet / p10k-velvet) run:"
+echo "  ./choose-profile.sh"
+echo ""
 
 scripts=(
   "setup.sh:Oh-My-Posh prompt"

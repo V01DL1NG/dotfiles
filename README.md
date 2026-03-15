@@ -5,22 +5,77 @@ Dotfiles and setup scripts for macOS terminal environment. Each config has an id
 ## Quick Start
 
 ```bash
-# Clone and install everything at once
+# Clone
 git clone https://github.com/V01DL1NG/dotfiles.git ~/code/dotfiles
 cd ~/code/dotfiles
-./install-all.sh
 
-# Or run individual setup scripts
+# Pick a shell profile — files are copied locally, no symlinks
+./choose-profile.sh
+
+# Then install tools, git, tmux, nvim, ssh
+./install-all.sh
+```
+
+Or run individual setup scripts:
+
+```bash
 ./setup.sh          # oh-my-posh prompt
 ./eza-config.sh     # eza (modern ls)
 ./tools-config.sh   # fzf, bat, lazygit, btop, zsh plugins + smart tools
 ./git-config.sh     # gitconfig + delta
 ./tmux-config.sh    # tmux + now-playing
 ./nvim-config.sh    # neovim + LSP servers
-./zshrc-config.sh   # zsh config
+./zshrc-config.sh   # zsh config (symlinked)
 ./iterm-config.sh   # iTerm2 velvet theme
 ./ssh-config.sh     # SSH config
 ```
+
+## Profiles
+
+The shell prompt and zsh config come in two flavours. Each installs local file copies — no symlinks — so users can edit freely without touching the repo.
+
+### Choosing a profile
+
+```bash
+./choose-profile.sh            # interactive picker
+./choose-profile.sh velvet     # install directly
+./choose-profile.sh p10k-velvet
+```
+
+| Profile | Prompt engine | Character |
+|---------|--------------|-----------|
+| **velvet** | oh-my-posh | Original velvet/sakura theme |
+| **p10k-velvet** | Powerlevel10k | Same velvet color palette, faster instant prompt, vi-mode aware `❯`/`❮` |
+
+Both profiles share the same tools, aliases, plugins, and velvet color palette. The only difference is the prompt engine and its config file.
+
+### Profile containers
+
+A profile container is a single self-executing `.profile.sh` file with all config files base64-embedded. Share one file and anyone can rebuild your exact setup — no repo required.
+
+```bash
+# Pack a built-in profile into a shareable container
+./profile.sh pack velvet -o velvet.profile.sh
+./profile.sh pack p10k-velvet --name "Team Setup" -o team.profile.sh
+
+# Export your own live config (after personal edits)
+./profile.sh export --name "My Setup" --desc "Personal tweaks" -o mine.profile.sh
+
+# Inspect before installing
+./profile.sh info team.profile.sh
+
+# Install from a container (no repo needed — fully self-contained)
+bash team.profile.sh
+bash team.profile.sh --info   # preview only
+```
+
+What `profile.sh` captures in a container:
+
+- `~/.zshrc`
+- `~/.p10k.zsh` (p10k profiles) or the `.omp.json` theme (oh-my-posh profiles)
+- All iTerm2 DynamicProfiles (skipped gracefully if iTerm2 isn't installed)
+
+The container auto-installs missing tools (oh-my-posh or powerlevel10k via Homebrew) and backs up any existing configs with a timestamp before overwriting.
 
 ## What's Included
 
@@ -202,8 +257,21 @@ All configs use a consistent **velvet/sakura** color palette:
 
 ```
 dotfiles/
-├── install-all.sh                  # one-command full setup
-├── setup.sh                        # oh-my-posh prompt setup
+├── choose-profile.sh               # interactive profile picker (copies files locally)
+├── profile.sh                      # profile container manager (export / pack / import)
+│
+├── profiles/                       # built-in profiles (source of truth)
+│   ├── velvet/                     # oh-my-posh + velvet/sakura theme
+│   │   ├── zshrc
+│   │   ├── velvet.omp.json
+│   │   └── iterm.json              # Velvet + Velvet Glass iTerm2 profiles
+│   └── p10k-velvet/                # Powerlevel10k + velvet color blend
+│       ├── zshrc
+│       ├── .p10k.zsh
+│       └── iterm.json              # P10k Velvet + P10k Velvet Glass iTerm2 profiles
+│
+├── install-all.sh                  # one-command full setup (tools, git, tmux, nvim, ssh)
+├── setup.sh                        # oh-my-posh prompt setup (legacy symlink path)
 ├── eza-config.sh                   # eza aliases setup
 ├── tools-config.sh                 # all terminal tools
 ├── git-config.sh                   # git setup
@@ -213,11 +281,11 @@ dotfiles/
 ├── now-playing.sh                  # now-playing script for tmux status bar
 ├── nvim-config.sh                  # neovim setup
 ├── init.lua                        # neovim config source
-├── zshrc-config.sh                 # zsh setup
-├── zshrc                           # zsh config source
-├── iterm-config.sh                 # iTerm2 setup
-├── velvet.iterm2profile.json       # iTerm2 Velvet + Velvet Glass profiles
-├── velvet.omp.json                 # oh-my-posh velvet theme
+├── zshrc-config.sh                 # zsh setup (symlink path)
+├── zshrc                           # zsh config source (symlink path)
+├── iterm-config.sh                 # iTerm2 setup (symlink path)
+├── velvet.iterm2profile.json       # iTerm2 Velvet + Velvet Glass profiles (symlink path)
+├── velvet.omp.json                 # oh-my-posh velvet theme (symlink path)
 ├── ssh-config.sh                   # SSH setup
 ├── ssh_config                      # SSH config source
 ├── Brewfile                        # all Homebrew packages

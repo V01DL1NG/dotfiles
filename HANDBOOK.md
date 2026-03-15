@@ -507,10 +507,82 @@ brew bundle dump --file=~/code/dotfiles/Brewfile --force
 
 ---
 
+## Profiles
+
+### Choosing a profile
+
+Run from the repo root and pick interactively, or pass the name directly:
+
+```bash
+./choose-profile.sh              # interactive menu
+./choose-profile.sh velvet       # oh-my-posh, original velvet theme
+./choose-profile.sh p10k-velvet  # Powerlevel10k, same velvet colors
+```
+
+Files are **copied** to your home directory — not symlinked. Edit them freely; your repo copy stays untouched.
+
+| Profile | Prompt | Theme file |
+|---------|--------|------------|
+| `velvet` | oh-my-posh | `~/oh-my-posh/velvet.omp.json` |
+| `p10k-velvet` | Powerlevel10k | `~/.p10k.zsh` |
+
+After switching profiles, run `source ~/.zshrc` or open a new terminal.
+
+**p10k-velvet tip:** run `p10k configure` at any time to interactively tweak the prompt — it rewrites `~/.p10k.zsh` in place.
+
+---
+
+## Profile Containers
+
+A container is a single portable `.profile.sh` file with your config files embedded. Send it to a teammate and they can rebuild your exact setup with one command.
+
+### Creating containers
+
+```bash
+# Pack a built-in profile
+./profile.sh pack velvet -o velvet.profile.sh
+./profile.sh pack p10k-velvet --name "Team Default" -o team.profile.sh
+
+# Export your own live config (captures your edits too)
+./profile.sh export --name "My Setup" --desc "Personal tweaks" -o mine.profile.sh
+
+# List available built-in profiles
+./profile.sh list
+```
+
+### Installing a container
+
+The recipient doesn't need this repo at all:
+
+```bash
+bash team.profile.sh             # install
+bash team.profile.sh --info      # preview: show what it contains without installing
+```
+
+The container will:
+1. Check for the required prompt engine (oh-my-posh or Powerlevel10k) and `brew install` it if missing
+2. Back up any existing configs with a timestamp before overwriting
+3. Copy files locally — no symlinks
+4. Skip iTerm2 profiles gracefully if iTerm2 isn't installed
+
+### What gets captured
+
+| File | When included |
+|------|--------------|
+| `~/.zshrc` | Always |
+| `~/.p10k.zsh` | p10k profiles |
+| `~/oh-my-posh/<theme>.omp.json` | oh-my-posh profiles |
+| `~/Library/…/iTerm2/DynamicProfiles/*.json` | When iTerm2 is installed |
+
+---
+
 ## Quick Reference Card
 
 | Task | Command |
 |------|---------|
+| Switch shell profile | `./choose-profile.sh` |
+| Share your config | `./profile.sh export -o mine.profile.sh` |
+| Install someone's container | `bash their-setup.profile.sh` |
 | Jump to a recent directory | `z <partial-name>` |
 | Find a past command | `Ctrl-R` (atuin) |
 | Find a file | `Ctrl-T` or `Space ff` (in nvim) |
