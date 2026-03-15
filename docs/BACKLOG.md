@@ -29,14 +29,14 @@ Items are grouped by theme. Check them off as they ship.
 
 ## Terminal Support
 
-- [ ] **Ghostty config** — add `profiles/*/ghostty.conf` alongside `iterm.json` so containers work across terminals (Ghostty has first-class config files that fit the copy-local model)
-- [ ] **Kitty config** — same idea; `profiles/*/kitty.conf` per profile
+- [x] **Ghostty config** — add `profiles/*/ghostty.conf` alongside `iterm.json` so containers work across terminals (Ghostty has first-class config files that fit the copy-local model)
+- [x] **Kitty config** — same idea; `profiles/*/kitty.conf` per profile
 
 ---
 
 ## Dotfiles Lifecycle
 
-- [ ] **`dotfiles update`** — `git pull` the repo, re-run profile install non-destructively (skip files that are newer than the profile source), report what changed; lets users stay in sync without losing personal edits
+- [x] **`update.sh`** — `git pull` the repo, re-run profile install non-destructively; three-way hash comparison skips user-modified files, auto-updates untouched ones, prompts on conflicts
 - [x] **Machine roles** — `work`, `personal`, `server` variants that layer on top of a base profile via `role.sh apply/remove/list/status`
 
 ---
@@ -51,3 +51,5 @@ Items are grouped by theme. Check them off as they ship.
 - [x] minimal profile — plain zsh prompt, no engine
 - [x] catppuccin profile — Catppuccin Mocha + Powerlevel10k
 - [x] Machine roles — work / personal / server via role.sh
+- [x] Ghostty + Kitty configs — all 4 profiles, auto-detected install, packed into containers
+- [x] update.sh — non-destructive pull + re-apply with three-way conflict detection

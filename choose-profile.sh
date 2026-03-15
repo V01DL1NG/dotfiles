@@ -41,6 +41,41 @@ declare -a PROFILES=(
   "minimal|Minimal|Plain zsh PROMPT · path + git branch · no prompt engine · server-friendly|"
 )
 
+# ── Helper: install Ghostty + Kitty configs if those terminals are present ───
+install_terminal_configs() {
+  local profile_dir="$1"
+
+  # Ghostty
+  if [ -d "/Applications/Ghostty.app" ] || command -v ghostty >/dev/null 2>&1; then
+    local ghostty_dir="$HOME/.config/ghostty"
+    mkdir -p "$ghostty_dir"
+    backup_if_exists "$ghostty_dir/config"
+    cp "$profile_dir/ghostty.conf" "$ghostty_dir/config"
+    success "installed Ghostty config"
+  fi
+
+  # Kitty
+  if [ -d "/Applications/kitty.app" ] || command -v kitty >/dev/null 2>&1; then
+    local kitty_dir="$HOME/.config/kitty"
+    mkdir -p "$kitty_dir"
+    backup_if_exists "$kitty_dir/kitty.conf"
+    cp "$profile_dir/kitty.conf" "$kitty_dir/kitty.conf"
+    success "installed Kitty config"
+  fi
+}
+
+# ── Helper: write state hash file ────────────────────────────────────────────
+write_state() {
+  local profile_name="$1"
+  local state_dir="$HOME/.config/dotfiles"
+  mkdir -p "$state_dir"
+  {
+    echo "profile=$profile_name"
+    echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%S)"
+    echo "$HOME/.zshrc=$(shasum -a 256 "$HOME/.zshrc" 2>/dev/null | awk '{print "sha256:"$1}')"
+  } > "$state_dir/state"
+}
+
 # ── Helper: back up a file if it exists ──────────────────────────────────────
 backup_if_exists() {
   local target="$1"
@@ -96,6 +131,8 @@ install_velvet() {
     warn "iTerm2 not detected — skipping iTerm2 profile"
   fi
 
+  install_terminal_configs "$profile_dir"
+  write_state "velvet"
   _post_install "Velvet" "oh-my-posh" "Velvet"
 }
 
@@ -134,6 +171,8 @@ install_p10k_velvet() {
     warn "iTerm2 not detected — skipping iTerm2 profile"
   fi
 
+  install_terminal_configs "$profile_dir"
+  write_state "p10k-velvet"
   _post_install "P10k Velvet" "p10k" "P10k Velvet"
 }
 
@@ -172,6 +211,8 @@ install_catppuccin() {
     warn "iTerm2 not detected — skipping iTerm2 profile"
   fi
 
+  install_terminal_configs "$profile_dir"
+  write_state "catppuccin"
   _post_install "Catppuccin" "p10k" "Catppuccin Mocha"
 }
 
@@ -184,6 +225,8 @@ install_minimal() {
   # zshrc only — no prompt engine, no iTerm2 profile
   install_file "$profile_dir/zshrc" "$HOME/.zshrc"
 
+  install_terminal_configs "$profile_dir"
+  write_state "minimal"
   _post_install "Minimal" "plain" ""
 }
 

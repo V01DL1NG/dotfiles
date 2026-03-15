@@ -231,6 +231,20 @@ _do_install() {
       continue
     fi
 
+    # Skip Ghostty config if Ghostty isn't installed
+    if [[ "$_dest" == *"ghostty"* ]] && \
+       ! { [ -d "/Applications/Ghostty.app" ] || command -v ghostty >/dev/null 2>&1; }; then
+      _warn "Ghostty not found — skipping $(basename "$_dest")"
+      continue
+    fi
+
+    # Skip Kitty config if Kitty isn't installed
+    if [[ "$_dest" == *"kitty"* ]] && \
+       ! { [ -d "/Applications/kitty.app" ] || command -v kitty >/dev/null 2>&1; }; then
+      _warn "Kitty not found — skipping $(basename "$_dest")"
+      continue
+    fi
+
     # Backup anything already at the destination
     if [ -e "$_dest" ] || [ -L "$_dest" ]; then
       local _bak="${_dest}.backup.${_ts}"
@@ -411,6 +425,15 @@ cmd_pack() {
 
       entries+=( "\$HOME/Library/Application Support/iTerm2/DynamicProfiles/velvet.json|$(b64_file "$profile_dir/iterm.json")" )
       success "packed iterm.json"
+
+      if [ -f "$profile_dir/ghostty.conf" ]; then
+        entries+=( "\$HOME/.config/ghostty/config|$(b64_file "$profile_dir/ghostty.conf")" )
+        success "packed ghostty.conf"
+      fi
+      if [ -f "$profile_dir/kitty.conf" ]; then
+        entries+=( "\$HOME/.config/kitty/kitty.conf|$(b64_file "$profile_dir/kitty.conf")" )
+        success "packed kitty.conf"
+      fi
       ;;
 
     p10k-velvet)
@@ -426,6 +449,15 @@ cmd_pack() {
 
       entries+=( "\$HOME/Library/Application Support/iTerm2/DynamicProfiles/p10k-velvet.json|$(b64_file "$profile_dir/iterm.json")" )
       success "packed iterm.json"
+
+      if [ -f "$profile_dir/ghostty.conf" ]; then
+        entries+=( "\$HOME/.config/ghostty/config|$(b64_file "$profile_dir/ghostty.conf")" )
+        success "packed ghostty.conf"
+      fi
+      if [ -f "$profile_dir/kitty.conf" ]; then
+        entries+=( "\$HOME/.config/kitty/kitty.conf|$(b64_file "$profile_dir/kitty.conf")" )
+        success "packed kitty.conf"
+      fi
       ;;
 
     catppuccin)
@@ -441,6 +473,15 @@ cmd_pack() {
 
       entries+=( "\$HOME/Library/Application Support/iTerm2/DynamicProfiles/catppuccin.json|$(b64_file "$profile_dir/iterm.json")" )
       success "packed iterm.json"
+
+      if [ -f "$profile_dir/ghostty.conf" ]; then
+        entries+=( "\$HOME/.config/ghostty/config|$(b64_file "$profile_dir/ghostty.conf")" )
+        success "packed ghostty.conf"
+      fi
+      if [ -f "$profile_dir/kitty.conf" ]; then
+        entries+=( "\$HOME/.config/kitty/kitty.conf|$(b64_file "$profile_dir/kitty.conf")" )
+        success "packed kitty.conf"
+      fi
       ;;
 
     minimal)
@@ -450,6 +491,15 @@ cmd_pack() {
 
       entries+=( "\$HOME/.zshrc|$(b64_file "$profile_dir/zshrc")" )
       success "packed zshrc"
+
+      if [ -f "$profile_dir/ghostty.conf" ]; then
+        entries+=( "\$HOME/.config/ghostty/config|$(b64_file "$profile_dir/ghostty.conf")" )
+        success "packed ghostty.conf"
+      fi
+      if [ -f "$profile_dir/kitty.conf" ]; then
+        entries+=( "\$HOME/.config/kitty/kitty.conf|$(b64_file "$profile_dir/kitty.conf")" )
+        success "packed kitty.conf"
+      fi
       ;;
 
     *)

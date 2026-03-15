@@ -17,6 +17,9 @@ curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap.
 # Install tools, git, tmux, nvim, ssh
 ./install-all.sh
 
+# Pull latest changes and re-apply your profile non-destructively
+./update.sh
+
 # Check your setup health at any time
 ./doctor.sh
 ```
@@ -54,7 +57,7 @@ The shell prompt and zsh config come in two flavours. Each installs local file c
 | **catppuccin** | Powerlevel10k | Catppuccin Mocha — mauve, blue, green accents |
 | **minimal** | none (plain zsh) | velvet colors, no engine required, server-friendly |
 
-All profiles share the same aliases, plugins, and smart tools. Only the prompt and colors differ.
+All profiles share the same aliases, plugins, and smart tools. Only the prompt and colors differ. Each profile also ships `ghostty.conf` and `kitty.conf` — installed automatically if Ghostty or Kitty is detected.
 
 ### Machine roles
 
@@ -244,6 +247,34 @@ Installs via Homebrew:
 | **zsh-syntax-highlighting** | Command coloring (velvet theme) |
 | **zsh-history-substring-search** | Up/Down matches anywhere in command, not just prefix |
 
+### Ghostty + Kitty
+
+Each profile includes terminal configs auto-installed when the terminal is detected:
+
+| Profile | Background | Accent |
+|---------|------------|--------|
+| velvet / p10k-velvet / minimal | `#0E050F` near-black | `#69307A` purple |
+| catppuccin | `#1E1E2E` Mocha base | `#CBA6F7` mauve |
+
+Configs land at `~/.config/ghostty/config` and `~/.config/kitty/kitty.conf`. Profile containers include them too — skipped gracefully if the terminal isn't installed.
+
+### Keeping up to date (`update.sh`)
+
+```bash
+./update.sh          # pull latest + smart re-apply
+./update.sh --check  # preview what would change (no writes)
+```
+
+Uses three-way hash comparison:
+
+| State | Action |
+|-------|--------|
+| File unchanged by you, repo updated | Auto-update silently |
+| File edited by you, repo unchanged | Keep your version |
+| Both you and repo changed it | Show diff, prompt Y/n |
+
+Your edits are never silently overwritten.
+
 ### iTerm2 (`velvet.iterm2profile.json` / `iterm-config.sh`)
 
 Two dynamic profiles installed automatically:
@@ -288,23 +319,32 @@ dotfiles/
 │   ├── velvet/                     # oh-my-posh + velvet/sakura theme
 │   │   ├── zshrc
 │   │   ├── velvet.omp.json
-│   │   └── iterm.json              # Velvet + Velvet Glass iTerm2 profiles
+│   │   ├── iterm.json              # Velvet + Velvet Glass iTerm2 profiles
+│   │   ├── ghostty.conf            # Ghostty — velvet/sakura palette
+│   │   └── kitty.conf              # Kitty — velvet/sakura palette
 │   ├── p10k-velvet/                # Powerlevel10k + velvet color blend
 │   │   ├── zshrc
 │   │   ├── .p10k.zsh
-│   │   └── iterm.json              # P10k Velvet + P10k Velvet Glass iTerm2 profiles
+│   │   ├── iterm.json              # P10k Velvet + P10k Velvet Glass iTerm2 profiles
+│   │   ├── ghostty.conf            # Ghostty — velvet/sakura palette
+│   │   └── kitty.conf              # Kitty — velvet/sakura palette
 │   ├── catppuccin/                 # Powerlevel10k + Catppuccin Mocha
 │   │   ├── zshrc
 │   │   ├── .p10k.zsh
-│   │   └── iterm.json              # Catppuccin Mocha + Catppuccin Mocha Glass
+│   │   ├── iterm.json              # Catppuccin Mocha + Catppuccin Mocha Glass
+│   │   ├── ghostty.conf            # Ghostty — Catppuccin Mocha palette
+│   │   └── kitty.conf              # Kitty — Catppuccin Mocha palette
 │   └── minimal/                    # plain zsh prompt, no engine
-│       └── zshrc
+│       ├── zshrc
+│       ├── ghostty.conf            # Ghostty — velvet/sakura palette
+│       └── kitty.conf              # Kitty — velvet/sakura palette
 │
 ├── roles/                          # machine role snippets (appended to ~/.zshrc)
 │   ├── work.zsh                    # corp proxy stubs, git identity reminder
 │   ├── personal.zsh                # project shortcuts, daily note helper
 │   └── server.zsh                  # GUI tool fallbacks, larger history
 │
+├── update.sh                       # pull latest + smart non-destructive re-apply
 ├── install-all.sh                  # one-command full setup (tools, git, tmux, nvim, ssh)
 ├── setup.sh                        # oh-my-posh prompt setup (legacy symlink path)
 ├── eza-config.sh                   # eza aliases setup
