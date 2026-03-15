@@ -15,15 +15,15 @@ Items are grouped by theme. Check them off as they ship.
 
 ## Onboarding
 
-- [ ] **`bootstrap.sh` / curl-to-install** — single command for a clean Mac (`curl -fsSL <url> | bash`); installs Xcode CLT → Homebrew → clones repo → runs `choose-profile.sh` + `install-all.sh`
-- [ ] **`dotfiles doctor`** — health-check command; reports broken symlinks, missing tools, outdated brew packages, mismatched tool versions, iTerm2 profile conflicts; more actionable than the current `test.sh`
+- [x] **`bootstrap.sh` / curl-to-install** — single command for a clean Mac (`curl -fsSL <url> | bash`); installs Xcode CLT → Homebrew → clones repo → runs `choose-profile.sh` + `install-all.sh`
+- [x] **`doctor.sh`** — health-check command; reports missing tools, broken/symlinked configs, git identity, font, iTerm2 profiles, active roles
 
 ---
 
 ## Built-in Profiles
 
-- [ ] **`minimal` profile** — plain zsh prompt (no oh-my-posh or p10k), same aliases and tools; useful for servers or pairing sessions where Nerd Fonts aren't guaranteed
-- [ ] **`catppuccin` profile** — Catppuccin Mocha palette; reuses the p10k engine and shares ~90% of the existing `.p10k.zsh` config
+- [x] **`minimal` profile** — plain zsh prompt (no oh-my-posh or p10k), same aliases and tools; useful for servers or pairing sessions where Nerd Fonts aren't guaranteed
+- [x] **`catppuccin` profile** — Catppuccin Mocha palette; reuses the p10k engine and shares ~90% of the existing `.p10k.zsh` config
 
 ---
 
@@ -37,7 +37,7 @@ Items are grouped by theme. Check them off as they ship.
 ## Dotfiles Lifecycle
 
 - [ ] **`dotfiles update`** — `git pull` the repo, re-run profile install non-destructively (skip files that are newer than the profile source), report what changed; lets users stay in sync without losing personal edits
-- [ ] **Machine roles** — `work`, `personal`, `server` variants that layer on top of a base profile; a work container adds corp proxy settings, a server container drops iTerm2 and GUI tools
+- [x] **Machine roles** — `work`, `personal`, `server` variants that layer on top of a base profile via `role.sh apply/remove/list/status`
 
 ---
 
@@ -46,3 +46,8 @@ Items are grouped by theme. Check them off as they ship.
 - [x] Multi-profile system (`choose-profile.sh`) — velvet + p10k-velvet, local file copies
 - [x] Profile containers (`profile.sh`) — export, pack, import, info, list
 - [x] p10k-velvet profile — Powerlevel10k blended with velvet/sakura palette
+- [x] bootstrap.sh — curl-installable new-Mac setup
+- [x] doctor.sh — comprehensive health check
+- [x] minimal profile — plain zsh prompt, no engine
+- [x] catppuccin profile — Catppuccin Mocha + Powerlevel10k
+- [x] Machine roles — work / personal / server via role.sh

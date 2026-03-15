@@ -516,19 +516,104 @@ Run from the repo root and pick interactively, or pass the name directly:
 ```bash
 ./choose-profile.sh              # interactive menu
 ./choose-profile.sh velvet       # oh-my-posh, original velvet theme
-./choose-profile.sh p10k-velvet  # Powerlevel10k, same velvet colors
+./choose-profile.sh p10k-velvet  # Powerlevel10k, velvet colors
+./choose-profile.sh catppuccin   # Powerlevel10k, Catppuccin Mocha
+./choose-profile.sh minimal      # plain zsh prompt, no engine needed
 ```
 
 Files are **copied** to your home directory — not symlinked. Edit them freely; your repo copy stays untouched.
 
-| Profile | Prompt | Theme file |
-|---------|--------|------------|
-| `velvet` | oh-my-posh | `~/oh-my-posh/velvet.omp.json` |
-| `p10k-velvet` | Powerlevel10k | `~/.p10k.zsh` |
+| Profile | Prompt | Editable files |
+|---------|--------|----------------|
+| `velvet` | oh-my-posh | `~/.zshrc`, `~/oh-my-posh/velvet.omp.json` |
+| `p10k-velvet` | Powerlevel10k | `~/.zshrc`, `~/.p10k.zsh` |
+| `catppuccin` | Powerlevel10k | `~/.zshrc`, `~/.p10k.zsh` |
+| `minimal` | plain zsh | `~/.zshrc` |
 
 After switching profiles, run `source ~/.zshrc` or open a new terminal.
 
-**p10k-velvet tip:** run `p10k configure` at any time to interactively tweak the prompt — it rewrites `~/.p10k.zsh` in place.
+**p10k tip:** run `p10k configure` at any time to interactively tweak the prompt — it rewrites `~/.p10k.zsh` in place.
+
+---
+
+## Machine Roles
+
+Roles are zsh snippets that append to your `~/.zshrc` without touching anything else. You can stack multiple roles and remove them cleanly at any time.
+
+```bash
+./role.sh apply  work      # append the work role
+./role.sh apply  personal  # stack personal on top
+./role.sh status           # see which roles are active
+./role.sh remove work      # cleanly strip the work block
+./role.sh list             # show all available roles + descriptions
+```
+
+### work role
+
+Adds stubs for a corporate proxy (commented out — fill in your org's URL) and a reminder alias for setting your work git identity:
+
+```bash
+# after applying, edit ~/.zshrc to uncomment:
+export http_proxy="http://proxy.corp.example.com:8080"
+export https_proxy="$http_proxy"
+
+# one-time git setup:
+git config --global user.email you@company.com
+```
+
+### personal role
+
+Adds project navigation shortcuts and a daily note helper:
+
+```bash
+proj          # cd ~/code
+dot           # cd ~/code/dotfiles
+note          # open today's ~/notes/YYYY-MM-DD.md in $EDITOR
+```
+
+### server role
+
+Makes the setup degrade gracefully on machines where GUI tools aren't installed:
+
+- Falls back to system `ls`, `cat`, `top` if `eza`/`bat`/`btop` are absent
+- Sets `HISTSIZE=200000` for long-running sessions
+- Opt-in ASCII prompt: set `SERVER_ASCII_PROMPT=1` before sourcing `.zshrc`
+
+### How roles work
+
+Each `role.sh apply` appends a clearly-marked block to `~/.zshrc`:
+
+```
+# <<< role:work >>>
+... work role content ...
+# <<< /role:work >>>
+```
+
+`role.sh remove` uses awk to strip the block precisely, then collapses any blank lines left behind. A timestamped backup of `~/.zshrc` is always taken before any modification.
+
+---
+
+## doctor.sh
+
+Run `./doctor.sh` from the repo at any time to check your setup:
+
+```bash
+./doctor.sh
+```
+
+Checks and reports (✓ pass / ! warning / ✗ fail):
+
+- **Homebrew** — installed and working
+- **Prompt engine** — auto-detected from `~/.zshrc`; binary and theme file present
+- **Shell tools** — fzf, fd, bat, eza, lazygit, btop, zoxide, atuin, direnv, delta
+- **Zsh plugins** — autosuggestions, syntax-highlighting, history-substring-search
+- **Config files** — `~/.zshrc`, `~/.gitconfig`, `~/.tmux.conf`, `~/.config/nvim/init.lua`
+- **Git identity** — `user.name` and `user.email` configured
+- **FiraCode Nerd Font** — present in `~/Library/Fonts` or `/Library/Fonts`
+- **iTerm2 profiles** — DynamicProfiles directory and JSON files
+- **Active roles** — which roles are currently applied to `~/.zshrc`
+
+Exits with code 1 if any checks fail, so it's safe to use in scripts.
 
 ---
 
@@ -580,7 +665,11 @@ The container will:
 
 | Task | Command |
 |------|---------|
+| New Mac setup | `curl -fsSL <bootstrap-url> \| bash` |
+| Check setup health | `./doctor.sh` |
 | Switch shell profile | `./choose-profile.sh` |
+| Apply a role | `./role.sh apply work` |
+| Remove a role | `./role.sh remove work` |
 | Share your config | `./profile.sh export -o mine.profile.sh` |
 | Install someone's container | `bash their-setup.profile.sh` |
 | Jump to a recent directory | `z <partial-name>` |

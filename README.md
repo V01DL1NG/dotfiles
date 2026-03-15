@@ -4,16 +4,21 @@ Dotfiles and setup scripts for macOS terminal environment. Each config has an id
 
 ## Quick Start
 
+**New Mac — one command:**
 ```bash
-# Clone
-git clone https://github.com/V01DL1NG/dotfiles.git ~/code/dotfiles
-cd ~/code/dotfiles
+curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap.sh | bash
+```
 
+**Already have the repo:**
+```bash
 # Pick a shell profile — files are copied locally, no symlinks
 ./choose-profile.sh
 
-# Then install tools, git, tmux, nvim, ssh
+# Install tools, git, tmux, nvim, ssh
 ./install-all.sh
+
+# Check your setup health at any time
+./doctor.sh
 ```
 
 Or run individual setup scripts:
@@ -42,12 +47,28 @@ The shell prompt and zsh config come in two flavours. Each installs local file c
 ./choose-profile.sh p10k-velvet
 ```
 
-| Profile | Prompt engine | Character |
-|---------|--------------|-----------|
-| **velvet** | oh-my-posh | Original velvet/sakura theme |
-| **p10k-velvet** | Powerlevel10k | Same velvet color palette, faster instant prompt, vi-mode aware `❯`/`❮` |
+| Profile | Prompt engine | Palette |
+|---------|--------------|---------|
+| **velvet** | oh-my-posh | velvet/sakura — deep purple to lavender |
+| **p10k-velvet** | Powerlevel10k | same velvet palette, instant prompt, vi-mode `❯`/`❮` |
+| **catppuccin** | Powerlevel10k | Catppuccin Mocha — mauve, blue, green accents |
+| **minimal** | none (plain zsh) | velvet colors, no engine required, server-friendly |
 
-Both profiles share the same tools, aliases, plugins, and velvet color palette. The only difference is the prompt engine and its config file.
+All profiles share the same aliases, plugins, and smart tools. Only the prompt and colors differ.
+
+### Machine roles
+
+Roles are additive snippets that layer on top of any profile. Stack as many as you like:
+
+```bash
+./role.sh apply work      # add corp proxy stubs + git identity reminder
+./role.sh apply personal  # add project shortcuts, daily note helper
+./role.sh apply server    # add GUI tool fallbacks, larger history, ASCII prompt option
+./role.sh status          # see which roles are active
+./role.sh remove work     # cleanly remove a role from ~/.zshrc
+```
+
+Each role appends a clearly-marked block to `~/.zshrc` that can be removed without touching anything else.
 
 ### Profile containers
 
@@ -257,18 +278,32 @@ All configs use a consistent **velvet/sakura** color palette:
 
 ```
 dotfiles/
+├── bootstrap.sh                    # curl-installable new Mac setup
 ├── choose-profile.sh               # interactive profile picker (copies files locally)
 ├── profile.sh                      # profile container manager (export / pack / import)
+├── role.sh                         # machine role manager (apply / remove / list / status)
+├── doctor.sh                       # health check — tools, configs, git, fonts, roles
 │
 ├── profiles/                       # built-in profiles (source of truth)
 │   ├── velvet/                     # oh-my-posh + velvet/sakura theme
 │   │   ├── zshrc
 │   │   ├── velvet.omp.json
 │   │   └── iterm.json              # Velvet + Velvet Glass iTerm2 profiles
-│   └── p10k-velvet/                # Powerlevel10k + velvet color blend
-│       ├── zshrc
-│       ├── .p10k.zsh
-│       └── iterm.json              # P10k Velvet + P10k Velvet Glass iTerm2 profiles
+│   ├── p10k-velvet/                # Powerlevel10k + velvet color blend
+│   │   ├── zshrc
+│   │   ├── .p10k.zsh
+│   │   └── iterm.json              # P10k Velvet + P10k Velvet Glass iTerm2 profiles
+│   ├── catppuccin/                 # Powerlevel10k + Catppuccin Mocha
+│   │   ├── zshrc
+│   │   ├── .p10k.zsh
+│   │   └── iterm.json              # Catppuccin Mocha + Catppuccin Mocha Glass
+│   └── minimal/                    # plain zsh prompt, no engine
+│       └── zshrc
+│
+├── roles/                          # machine role snippets (appended to ~/.zshrc)
+│   ├── work.zsh                    # corp proxy stubs, git identity reminder
+│   ├── personal.zsh                # project shortcuts, daily note helper
+│   └── server.zsh                  # GUI tool fallbacks, larger history
 │
 ├── install-all.sh                  # one-command full setup (tools, git, tmux, nvim, ssh)
 ├── setup.sh                        # oh-my-posh prompt setup (legacy symlink path)
