@@ -45,3 +45,6 @@
 	branches = branch --sort=-committerdate --format='%(committerdate:relative)\t%(refname:short)'
 	st = status --short --branch
 	last = log -1 --stat
+[user]
+	name = V01DL1NG
+	email = 64335879+V01DL1NG@users.noreply.github.com

@@ -168,6 +168,8 @@
       "Normal Font": "FiraCodeNFM-Reg 13",
       "Non Ascii Font": "FiraCodeNFM-Reg 13",
       "Use Non-ASCII Font": true,
+      "Mouse Reporting": true,
+      "Mouse Reporting Mode": 1,
       "Transparency": 0.0,
       "Blur": false,
       "Minimum Contrast": 0.0
