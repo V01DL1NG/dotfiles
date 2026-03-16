@@ -17,6 +17,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
 PROFILES_DIR="$SCRIPT_DIR/profiles"
 
 # ── Colors ───────────────────────────────────────────────────────────────────
@@ -193,6 +195,9 @@ _ensure_tool() {
         if command -v brew >/dev/null 2>&1; then
           _info "Installing powerlevel10k via Homebrew..."
           brew install powerlevel10k
+        elif command -v apt-get >/dev/null 2>&1; then
+          _error "powerlevel10k is not in apt repos — install manually or use the minimal profile"
+          return 1
         else
           _error "Install powerlevel10k first: brew install powerlevel10k"
           return 1
@@ -205,6 +210,9 @@ _ensure_tool() {
         if command -v brew >/dev/null 2>&1; then
           _info "Installing oh-my-posh via Homebrew..."
           brew install jandedobbeleer/oh-my-posh/oh-my-posh
+        elif command -v apt-get >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
+          _info "Installing oh-my-posh via official script..."
+          curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/.local/bin
         else
           _error "Install oh-my-posh first: brew install jandedobbeleer/oh-my-posh/oh-my-posh"
           return 1

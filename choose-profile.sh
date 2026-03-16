@@ -13,6 +13,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
 PROFILES_DIR="$SCRIPT_DIR/profiles"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 
@@ -108,9 +110,11 @@ install_velvet() {
     if command -v brew >/dev/null 2>&1; then
       info "Installing oh-my-posh via Homebrew..."
       brew install jandedobbeleer/oh-my-posh/oh-my-posh
+    elif command -v apt-get >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then
+      info "Installing oh-my-posh via official script..."
+      curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/.local/bin
     else
-      error "Homebrew not found — install oh-my-posh manually: https://ohmyposh.dev/docs/installation/macos"
-      exit 1
+      echo "Warning: oh-my-posh not installed — install manually"
     fi
   fi
 
@@ -149,9 +153,10 @@ install_p10k_velvet() {
     if command -v brew >/dev/null 2>&1; then
       info "Installing powerlevel10k via Homebrew..."
       brew install powerlevel10k
+    elif command -v apt-get >/dev/null 2>&1; then
+      echo "Warning: powerlevel10k is not in apt repos — install manually or use the minimal profile"
     else
-      error "Homebrew not found — install powerlevel10k manually: brew install powerlevel10k"
-      exit 1
+      echo "Warning: powerlevel10k not installed — install manually"
     fi
   fi
 
@@ -189,9 +194,10 @@ install_catppuccin() {
     if command -v brew >/dev/null 2>&1; then
       info "Installing powerlevel10k via Homebrew..."
       brew install powerlevel10k
+    elif command -v apt-get >/dev/null 2>&1; then
+      echo "Warning: powerlevel10k is not in apt repos — install manually or use the minimal profile"
     else
-      error "Homebrew not found — install powerlevel10k manually: brew install powerlevel10k"
-      exit 1
+      echo "Warning: powerlevel10k not installed — install manually"
     fi
   fi
 

@@ -2,6 +2,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
+
+if [ "$DOTFILES_OS" != "macos" ]; then
+  echo "Skipping iTerm2 config (macOS only)"
+  exit 0
+fi
+
 DYNAMIC_PROFILES_DIR="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
 
 # Check if iTerm2 is installed
