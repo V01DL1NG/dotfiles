@@ -21,6 +21,7 @@ source_platform() {
     printf 'PKG_INSTALL=%s\n' "$PKG_INSTALL"
     printf 'SED=%s\n' "$SED_INPLACE"
     printf 'B64=%s\n' "$BASE64_DECODE"
+    printf 'CLIPBOARD=%s\n' "$DOTFILES_CLIPBOARD"
   )
 }
 
@@ -57,6 +58,17 @@ check "macos → BASE64_DECODE" "$(echo "$out" | grep '^B64=' | cut -d= -f2-)" "
 out="$(source_platform linux-server apt)"
 check "linux → SED_INPLACE"   "$(echo "$out" | grep '^SED=' | cut -d= -f2-)" "sed -i"
 check "linux → BASE64_DECODE" "$(echo "$out" | grep '^B64=' | cut -d= -f2-)" "base64 -d"
+
+section "DOTFILES_CLIPBOARD"
+# macOS should always be pbcopy
+out="$(source_platform macos brew)"
+check "macos → DOTFILES_CLIPBOARD" \
+  "$(echo "$out" | grep '^CLIPBOARD=' | cut -d= -f2-)" "pbcopy"
+
+# linux-server should always be empty
+out="$(source_platform linux-server apt)"
+check "linux-server → DOTFILES_CLIPBOARD empty" \
+  "$(echo "$out" | grep '^CLIPBOARD=' | cut -d= -f2-)" ""
 
 out="$(source_platform linux-desktop apt)"
 check "linux-desktop → DOTFILES_OS" "$(echo "$out" | grep '^OS=' | cut -d= -f2 | awk '{print $1}')" "linux-desktop"
@@ -106,6 +118,30 @@ check "brew neovim"   "$(pkg_result brew   neovim)" "neovim"
 check "apt neovim"    "$(pkg_result apt    neovim)" "neovim"
 check "dnf neovim"    "$(pkg_result dnf    neovim)" "neovim"
 check "pacman neovim" "$(pkg_result pacman neovim)" "neovim"
+
+section "pkg() — bat (available everywhere)"
+check "brew bat"   "$(pkg_result brew   bat)" "bat"
+check "apt bat"    "$(pkg_result apt    bat)" "bat"
+check "dnf bat"    "$(pkg_result dnf    bat)" "bat"
+check "pacman bat" "$(pkg_result pacman bat)" "bat"
+
+section "pkg() — eza (available everywhere)"
+check "brew eza"   "$(pkg_result brew   eza)" "eza"
+check "apt eza"    "$(pkg_result apt    eza)" "eza"
+check "dnf eza"    "$(pkg_result dnf    eza)" "eza"
+check "pacman eza" "$(pkg_result pacman eza)" "eza"
+
+section "pkg() — fzf (available everywhere)"
+check "brew fzf"   "$(pkg_result brew   fzf)" "fzf"
+check "apt fzf"    "$(pkg_result apt    fzf)" "fzf"
+check "dnf fzf"    "$(pkg_result dnf    fzf)" "fzf"
+check "pacman fzf" "$(pkg_result pacman fzf)" "fzf"
+
+section "pkg() — zoxide (available everywhere)"
+check "brew zoxide"   "$(pkg_result brew   zoxide)" "zoxide"
+check "apt zoxide"    "$(pkg_result apt    zoxide)" "zoxide"
+check "dnf zoxide"    "$(pkg_result dnf    zoxide)" "zoxide"
+check "pacman zoxide" "$(pkg_result pacman zoxide)" "zoxide"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
