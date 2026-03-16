@@ -32,7 +32,7 @@ A new file sourced at the top of every install script with `. "$SCRIPT_DIR/platf
 | `$PKG_INSTALL` | `brew install` | `sudo apt-get install -y` / `sudo dnf install -y` / `sudo pacman -S --noconfirm` | same | `false` |
 | `$SED_INPLACE` | `sed -i ''` | `sed -i` | `sed -i` | `sed -i` |
 | `$BASE64_DECODE` | `base64 -D` | `base64 -d` | `base64 -d` | `base64 -d` |
-| `$CLIPBOARD_CMD` | `pbcopy` | `xclip -sel clip` (fallback: `xsel --clipboard`) | _(none — server)_ | _(none)_ |
+| `$DOTFILES_CLIPBOARD` | `pbcopy` | `xclip -sel clip` (fallback: `xsel --clipboard`) | _(empty — server)_ | _(empty)_ |
 
 ### Detection logic
 
@@ -51,7 +51,34 @@ Package manager detection (Linux only, in order):
   otherwise          →  unknown  (PKG_INSTALL="false")
 ```
 
-`$PKG_INSTALL="false"` means calling it as a command will fail loudly rather than silently doing nothing.
+`$PKG_INSTALL="false"` means calling it as a command fails loudly rather than silently doing nothing.
+
+### `pkg()` helper — package name resolution
+
+`platform.sh` exports a `pkg()` function that maps logical names to the correct package name for the current PM. If a package is unavailable for a given PM, `pkg()` returns an empty string. Call sites must guard against empty output:
+
+```bash
+# Pattern for optional packages:
+_p="$(pkg lazygit)"
+[ -n "$_p" ] && $PKG_INSTALL "$_p"
+
+# Pattern for required packages (always have a name):
+$PKG_INSTALL "$(pkg neovim)"
+```
+
+| Logical name | brew | apt | dnf | pacman | Notes |
+|---|---|---|---|---|---|
+| `delta` | `git-delta` | _(empty — see note)_ | `git-delta` | `git-delta` | apt: not in default repos on Ubuntu ≤22.04; install from GitHub releases or skip |
+| `bat` | `bat` | `bat` | `bat` | `bat` | |
+| `eza` | `eza` | `eza` | `eza` | `eza` | |
+| `fd` | `fd` | `fd-find` | `fd-find` | `fd` | |
+| `neovim` | `neovim` | `neovim` | `neovim` | `neovim` | |
+| `lazygit` | `lazygit` | _(empty — PPA required)_ | `lazygit` | `lazygit` | apt: skipped; user can add the PPA manually |
+| `fzf` | `fzf` | `fzf` | `fzf` | `fzf` | |
+| `zoxide` | `zoxide` | `zoxide` | `zoxide` | `zoxide` | |
+| `atuin` | `atuin` | _(empty)_ | _(empty)_ | `atuin` | apt/dnf: install via `curl | sh` from atuin's own installer, or skip |
+
+`delta` on apt: `git-config.sh` treats it as optional — falls back to plain `git diff` if `pkg delta` returns empty. A warning is printed.
 
 ---
 
@@ -59,45 +86,37 @@ Package manager detection (Linux only, in order):
 
 Each script gains two changes:
 1. `. "$SCRIPT_DIR/platform.sh"` at the top
-2. `brew install` replaced with `$PKG_INSTALL <package>`
+2. `brew install` replaced with `$PKG_INSTALL "$(pkg <name>)"` (with optional-package guard where needed)
 
-### Package name differences
-
-Some packages have different names across package managers. A lookup is handled inside `platform.sh` via a `pkg()` helper function:
-
-```bash
-pkg <logical-name>
-# e.g. pkg delta  →  "git-delta" on apt, "delta" elsewhere
-```
-
-| Logical name | brew | apt | dnf | pacman |
-|---|---|---|---|---|
-| `delta` | `git-delta` | `git-delta` | `git-delta` | `git-delta` |
-| `bat` | `bat` | `bat` | `bat` | `bat` |
-| `eza` | `eza` | `eza` | `eza` | `eza` |
-| `fd` | `fd` | `fd-find` | `fd-find` | `fd` |
-| `neovim` | `neovim` | `neovim` | `neovim` | `neovim` |
-| `lazygit` | `lazygit` | _(PPA required — skip on unknown)_ | `lazygit` | `lazygit` |
-
-Scripts that require changes:
+### Scripts requiring changes
 
 | Script | Change |
 |---|---|
-| `tools-config.sh` | `$PKG_INSTALL $(pkg fzf) $(pkg bat) $(pkg eza)` etc. |
-| `git-config.sh` | `$PKG_INSTALL git $(pkg delta)` |
-| `tmux-config.sh` | `$PKG_INSTALL tmux` |
+| `tools-config.sh` | `$PKG_INSTALL` + `pkg()` for fzf, bat, eza, fd, zoxide; optional guard for atuin, lazygit |
+| `git-config.sh` | `$PKG_INSTALL git`; optional guard for delta |
+| `tmux-config.sh` | `$PKG_INSTALL tmux`; guard `nowplaying-cli` install as macOS-only (skip on Linux) |
 | `nvim-config.sh` | `$PKG_INSTALL neovim` |
-| `setup.sh` | Guard: skip oh-my-posh install when `$DOTFILES_OS = linux-server` |
-| `iterm-config.sh` | Guard: exit early when `$DOTFILES_OS != macos` |
-| `install-all.sh` | Skip `iterm-config.sh` and `setup.sh` when `$DOTFILES_OS = linux-server` |
+| `eza-config.sh` | `$PKG_INSTALL "$(pkg eza)"`; fd name fix via `pkg fd` |
+| `setup.sh` | Guard: skip oh-my-posh install on `linux-server`; allow on `linux-desktop` |
+| `iterm-config.sh` | Exit early (success, not error) when `$DOTFILES_OS != macos` |
+| `install-all.sh` | Skip `iterm-config.sh` on Linux; skip `setup.sh` on `linux-server` |
+| `choose-profile.sh` | Replace `brew install oh-my-posh` / `brew install powerlevel10k` with `$PKG_INSTALL`-aware calls; these are prerequisites for `bootstrap-server.sh` step 5 |
+| `profile.sh` | Replace `base64 -D` with `$BASE64_DECODE`; replace `brew install` in `_ensure_tool()` with `$PKG_INSTALL` |
+| `zshrc-config.sh` | Source `platform.sh`; no brew calls but needs platform-aware clipboard |
+| `ssh-config.sh` | No changes needed — platform-neutral |
 
 ### zshrc clipboard portability
 
-The `copy` function in all profile `zshrc` files changes from:
+The `copy` function in all profile `zshrc` files changes to:
+
 ```zsh
-copy() { pbcopy }
+# Portable clipboard copy
+if [[ -n "$DOTFILES_CLIPBOARD" ]]; then
+  copy() { $DOTFILES_CLIPBOARD }
+fi
 ```
-to a platform-aware version that sources `$CLIPBOARD_CMD` at shell startup. On Linux desktop, `xclip` or `xsel` is used if present; on server the function is omitted.
+
+`$DOTFILES_CLIPBOARD` is set by `platform.sh` (exported into the shell environment) to `pbcopy` on macOS, `xclip -sel clip` or `xsel --clipboard` on Linux desktop (whichever is installed), and empty on server. The function is only defined when a clipboard tool is available.
 
 ---
 
@@ -115,36 +134,43 @@ curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap-
 1. OS check
    - uname != Linux  →  hard exit: "This script is for Linux servers. For macOS use bootstrap.sh"
 
-2. Source platform.sh (inline copy — no repo yet)
+2. Inline platform detection (no repo yet — PM detection only)
    - Detects $PKG_MGR
 
 3. Install base tools (if PKG_MGR != unknown)
    Required: git zsh curl fzf bat eza zoxide
    Optional (best-effort): atuin delta lazygit
+   - Package names are resolved via an inline mapping table embedded in bootstrap-server.sh
+     (platform.sh is not available yet — repo not cloned until step 4)
+   - Optional packages with no entry in the inline map for the current PM are skipped silently
    - If PKG_MGR = unknown: skip installs entirely, record list of missing tools
 
 4. Clone repo
    git clone https://github.com/V01DL1NG/dotfiles ~/dotfiles
+   (prerequisite: git must be available — hard exit if missing)
 
 5. Install minimal profile
    ~/dotfiles/choose-profile.sh minimal   (non-interactive)
+   (choose-profile.sh is now platform-aware per Component 2)
 
 6. Apply server role
    ~/dotfiles/role.sh apply server
 
 7. Set zsh as default shell
-   chsh -s $(which zsh)   (prompts if not already default)
+   chsh -s $(which zsh)
+   - Skip silently if zsh is already the login shell
+   - Skip with warning if zsh is not installed (unknown PM path)
 
 8. Print summary
    - If PKG_MGR = unknown: warn with list of 7 tools to install manually
-   - Next steps: reconnect SSH, source ~/.zshrc
+   - Next steps: reconnect SSH to activate new shell, source ~/.zshrc
 ```
 
 ### Error handling
 
 | Condition | Behaviour |
 |---|---|
-| Non-Linux OS | Hard exit with clear message pointing to `bootstrap.sh` |
+| Non-Linux OS | Hard exit with message pointing to `bootstrap.sh` |
 | Unknown package manager | Skip tool installs, continue with clone + profile + role, print warning |
 | `git` missing on unknown PM | Hard exit: git is required to clone the repo |
 | `zsh` missing on unknown PM | Continue without `chsh`; print manual install instructions |
@@ -153,10 +179,12 @@ curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap-
 
 ## Component 4 — `doctor.sh` Linux section
 
-`doctor.sh` already runs platform-neutral checks. It gains a new Linux-aware section:
+`doctor.sh` sources `platform.sh` and branches on `$DOTFILES_OS`:
 
-- **Skip on Linux:** FiraCode font check, iTerm2 profile check, oh-my-posh check (unless desktop)
-- **Add on Linux:** check for `xclip`/`xsel` (desktop), check that `zsh` is the login shell, check `$PKG_MGR` is known
+- **Skip on Linux server:** FiraCode font check, iTerm2 profile check, oh-my-posh check
+- **Skip on Linux (any):** Homebrew check
+- **Add on Linux desktop:** check for `xclip` or `xsel` (clipboard); warn if neither present
+- **Add on Linux (any):** check that `zsh` is the login shell; check `$PKG_MGR` is not `unknown`
 - **Server-specific:** flag if `$DISPLAY` is unexpectedly set (possible misconfiguration)
 
 ---
@@ -165,8 +193,9 @@ curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap-
 
 - Windows / WSL support
 - Homebrew on Linux (Linuxbrew) — not supported; native PM only
-- GUI application theming on Linux (no plans for GNOME/KDE theme integration)
+- GUI application theming on Linux (no GNOME/KDE integration)
 - Automatic font installation on Linux (user responsibility)
+- `delta` on Ubuntu ≤22.04 apt — marked optional; user installs from GitHub releases if desired
 
 ---
 
@@ -174,15 +203,20 @@ curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap-
 
 | File | Type | Notes |
 |---|---|---|
-| `platform.sh` | **New** | Core detection library |
+| `platform.sh` | **New** | Core detection library + `pkg()` helper |
 | `bootstrap-server.sh` | **New** | Headless Linux entry point |
-| `tools-config.sh` | Modified | `$PKG_INSTALL` + `pkg()` helper |
-| `git-config.sh` | Modified | `$PKG_INSTALL` + delta name fix |
-| `tmux-config.sh` | Modified | `$PKG_INSTALL` |
-| `nvim-config.sh` | Modified | `$PKG_INSTALL` |
-| `setup.sh` | Modified | macOS/desktop guard |
-| `iterm-config.sh` | Modified | macOS-only guard |
+| `tools-config.sh` | Modified | `$PKG_INSTALL` + `pkg()` + optional guards |
+| `git-config.sh` | Modified | `$PKG_INSTALL`; delta optional on apt |
+| `tmux-config.sh` | Modified | `$PKG_INSTALL tmux`; guard `nowplaying-cli` as macOS-only |
+| `nvim-config.sh` | Modified | `$PKG_INSTALL neovim` |
+| `eza-config.sh` | Modified | `$PKG_INSTALL "$(pkg eza)"`; fd name fix |
+| `setup.sh` | Modified | macOS/desktop guard for oh-my-posh |
+| `iterm-config.sh` | Modified | Early exit (success) on non-macOS |
 | `install-all.sh` | Modified | Skip macOS-only scripts on Linux |
+| `choose-profile.sh` | Modified | Replace hardcoded `brew install` with `$PKG_INSTALL` |
+| `profile.sh` | Modified | `$BASE64_DECODE`; `$PKG_INSTALL` in `_ensure_tool()` |
+| `zshrc-config.sh` | Modified | Source `platform.sh` |
 | `doctor.sh` | Modified | Linux-aware checks |
-| `profiles/*/zshrc` | Modified | Portable `copy` function |
+| `profiles/*/zshrc` | Modified | Portable `copy` function via `$DOTFILES_CLIPBOARD` |
 | `README.md` | Modified | Linux install instructions |
+| `ssh-config.sh` | No change | Platform-neutral — no modifications needed |
