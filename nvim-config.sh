@@ -19,18 +19,16 @@ fi
 
 # Install LSP servers via brew (macOS) or skip with a note on Linux
 # lua-language-server is brew-only; on Linux install manually or via Mason
-for lsp_pkg in lua-language-server; do
-  if ! command -v "$lsp_pkg" >/dev/null 2>&1; then
-    _p="$(pkg lua-ls)"; if [ -n "$_p" ]; then
-      echo "Installing $lsp_pkg..."
-      $PKG_INSTALL "$_p"
-    else
-      echo "Warning: $lsp_pkg not available via $PKG_MGR — install manually or use Mason inside nvim." >&2
-    fi
+if ! command -v lua-language-server >/dev/null 2>&1; then
+  _p="$(pkg lua-ls)"; if [ -n "$_p" ]; then
+    echo "Installing lua-language-server..."
+    $PKG_INSTALL "$_p"
   else
-    echo "$lsp_pkg already installed"
+    echo "Warning: lua-language-server not available via $PKG_MGR — install manually or use Mason inside nvim." >&2
   fi
-done
+else
+  echo "lua-language-server already installed"
+fi
 
 # npm-based LSP servers (cross-platform via Node.js)
 for npm_pkg in pyright typescript typescript-language-server; do
