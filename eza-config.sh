@@ -1,6 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
 
 ZSHRC="$HOME/.zshrc"
+
+# Ensure eza is installed
+if ! command -v eza >/dev/null 2>&1; then
+  echo "Installing eza..."
+  $PKG_INSTALL "$(pkg eza)"
+fi
+
+# Ensure fd is installed (used by fzf for file listing)
+if ! command -v fd >/dev/null 2>&1 && ! command -v fdfind >/dev/null 2>&1; then
+  echo "Installing fd..."
+  $PKG_INSTALL "$(pkg fd)"
+fi
 
 # Define aliases
 ALIASES=(
@@ -13,9 +30,9 @@ ALIASES=(
 if [ -f "$ZSHRC" ]; then
     cp "$ZSHRC" "${ZSHRC}-$(date +%Y%m%d%H%).bak"
     echo "Backup of .zshrc created."
-fi 
+fi
 
-# Create .zshrc if it doesn't exist 
+# Create .zshrc if it doesn't exist
 if ! [ -f "$ZSHRC" ]; then
     echo "Creating shell config at $ZSHRC"
     touch "$ZSHRC"

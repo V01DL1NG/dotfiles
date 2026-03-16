@@ -2,16 +2,27 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
+
 GITCONFIG="$HOME/.gitconfig"
 BACKUP="$GITCONFIG.backup.$(date +%Y%m%d%H%M%S)"
 
-# Install delta via Homebrew if missing
+# Install git if missing
+if ! command -v git >/dev/null 2>&1; then
+  echo "Installing git..."
+  $PKG_INSTALL "$(pkg git)"
+else
+  echo "git already installed: $(git --version)"
+fi
+
+# Install delta (optional — not available in all repos)
 if ! command -v delta >/dev/null 2>&1; then
-  if command -v brew >/dev/null 2>&1; then
-    echo "Installing git-delta via Homebrew..."
-    brew install git-delta
+  _p="$(pkg delta)"; if [ -n "$_p" ]; then
+    echo "Installing git-delta..."
+    $PKG_INSTALL "$_p"
   else
-    echo "Warning: delta not found. Diffs will use default pager." >&2
+    echo "Note: git-delta is not available via $PKG_MGR — using plain git diff"
   fi
 else
   echo "delta already installed"

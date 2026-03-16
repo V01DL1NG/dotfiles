@@ -2,47 +2,47 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
+
 NVIM_DIR="$HOME/.config/nvim"
 NVIM_INIT="$NVIM_DIR/init.lua"
 BACKUP="$NVIM_INIT.backup.$(date +%Y%m%d%H%M%S)"
 
-# Install neovim via Homebrew if missing
+# Install neovim if missing
 if ! command -v nvim >/dev/null 2>&1; then
-  if command -v brew >/dev/null 2>&1; then
-    echo "Installing neovim via Homebrew..."
-    brew install neovim
-  else
-    echo "Error: Homebrew not found. Please install neovim manually." >&2
-    exit 1
-  fi
+  echo "Installing neovim..."
+  $PKG_INSTALL "$(pkg neovim)"
 else
   echo "neovim already installed: $(nvim --version | head -1)"
 fi
 
-# Install LSP servers if missing
-for pkg in lua-language-server; do
-  if ! command -v "$pkg" >/dev/null 2>&1; then
-    if command -v brew >/dev/null 2>&1; then
-      echo "Installing $pkg via Homebrew..."
-      brew install "$pkg"
+# Install LSP servers via brew (macOS) or skip with a note on Linux
+# lua-language-server is brew-only; on Linux install manually or via Mason
+for lsp_pkg in lua-language-server; do
+  if ! command -v "$lsp_pkg" >/dev/null 2>&1; then
+    _p="$(pkg lua-ls)"; if [ -n "$_p" ]; then
+      echo "Installing $lsp_pkg..."
+      $PKG_INSTALL "$_p"
     else
-      echo "Warning: $pkg not found. Install manually for LSP support." >&2
+      echo "Warning: $lsp_pkg not available via $PKG_MGR — install manually or use Mason inside nvim." >&2
     fi
   else
-    echo "$pkg already installed"
+    echo "$lsp_pkg already installed"
   fi
 done
 
-for pkg in pyright typescript typescript-language-server; do
-  if ! command -v "$pkg" >/dev/null 2>&1; then
+# npm-based LSP servers (cross-platform via Node.js)
+for npm_pkg in pyright typescript typescript-language-server; do
+  if ! command -v "$npm_pkg" >/dev/null 2>&1; then
     if command -v npm >/dev/null 2>&1; then
-      echo "Installing $pkg via npm..."
-      npm install -g "$pkg"
+      echo "Installing $npm_pkg via npm..."
+      npm install -g "$npm_pkg"
     else
-      echo "Warning: $pkg not found. Install Node.js and npm for LSP support." >&2
+      echo "Warning: $npm_pkg not found. Install Node.js and npm for LSP support." >&2
     fi
   else
-    echo "$pkg already installed"
+    echo "$npm_pkg already installed"
   fi
 done
 

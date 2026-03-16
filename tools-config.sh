@@ -1,27 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install terminal productivity tools via Homebrew
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
 
-if ! command -v brew >/dev/null 2>&1; then
-  echo "Error: Homebrew not found. Please install it first." >&2
-  exit 1
+# Install terminal productivity tools
+
+echo "Installing terminal tools via $PKG_MGR..."
+
+# Required tools — always available on all supported package managers
+$PKG_INSTALL "$(pkg fzf)"
+$PKG_INSTALL "$(pkg bat)"
+$PKG_INSTALL "$(pkg eza)"
+$PKG_INSTALL "$(pkg fd)"
+$PKG_INSTALL "$(pkg zoxide)"
+$PKG_INSTALL "$(pkg btop)"
+$PKG_INSTALL "$(pkg direnv)"
+
+# zsh plugins — brew only; on Linux, these are loaded via the zsh plugin manager
+if [ "$PKG_MGR" = "brew" ]; then
+  $PKG_INSTALL zsh-autosuggestions
+  $PKG_INSTALL zsh-syntax-highlighting
+  $PKG_INSTALL zsh-history-substring-search
+else
+  echo "Skipping zsh plugins (managed via zsh plugin manager on Linux)"
 fi
 
-tools=(
-  fzf bat lazygit btop
-  zsh-autosuggestions zsh-syntax-highlighting zsh-history-substring-search
-  zoxide atuin direnv fd
-)
-
-for tool in "${tools[@]}"; do
-  if brew list "$tool" &>/dev/null; then
-    echo "$tool already installed"
-  else
-    echo "Installing $tool via Homebrew..."
-    brew install "$tool"
-  fi
-done
+# Optional tools — may not be available in all package repos
+_p="$(pkg atuin)"; [ -n "$_p" ] && $PKG_INSTALL "$_p" || echo "Skipping atuin (not available via $PKG_MGR — install manually from https://atuin.sh)"
+_p="$(pkg lazygit)"; [ -n "$_p" ] && $PKG_INSTALL "$_p" || echo "Skipping lazygit (not available via $PKG_MGR — install via PPA or manually)"
 
 # fzf installs keybindings and completion separately
 if command -v fzf >/dev/null 2>&1; then
