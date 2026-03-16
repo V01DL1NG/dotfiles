@@ -6,8 +6,8 @@
 #   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #   . "$SCRIPT_DIR/platform.sh"
 #
-# Exports: DOTFILES_OS, PKG_MGR, PKG_INSTALL, SED_INPLACE, BASE64_DECODE,
-#          DOTFILES_CLIPBOARD, and the pkg() function.
+# Exports: DOTFILES_OS, PKG_MGR, PKG_INSTALL, BASE64_DECODE,
+#          DOTFILES_CLIPBOARD, and the pkg() and sed_inplace() functions.
 #
 # Test overrides (for use in test-platform.sh):
 #   _DOTFILES_FORCE_OS      — force DOTFILES_OS to a specific value
@@ -57,9 +57,19 @@ esac
 # ── Portability ───────────────────────────────────────────────────────────────
 # Branch on $DOTFILES_OS (not uname) so force-override works in tests
 case "$DOTFILES_OS" in
-  macos)  SED_INPLACE="sed -i ''"; BASE64_DECODE="base64 -D" ;;
-  *)      SED_INPLACE="sed -i";    BASE64_DECODE="base64 -d" ;;
+  macos) BASE64_DECODE="base64 -D" ;;
+  *)     BASE64_DECODE="base64 -d" ;;
 esac
+
+# sed_inplace — portable in-place sed; use instead of $SED_INPLACE
+# Usage: sed_inplace 's/old/new/' file
+sed_inplace() {
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
 
 # Clipboard — pbcopy on macOS, xclip/xsel on Linux desktop, empty on server
 DOTFILES_CLIPBOARD=""
@@ -70,8 +80,6 @@ elif [ "$DOTFILES_OS" = "linux-desktop" ]; then
   elif command -v xsel  >/dev/null 2>&1; then DOTFILES_CLIPBOARD="xsel --clipboard"
   fi
 fi
-
-export DOTFILES_OS PKG_MGR PKG_INSTALL SED_INPLACE BASE64_DECODE DOTFILES_CLIPBOARD
 
 # ── pkg() — resolve logical package name to PM-specific package name ──────────
 # Returns empty string if the package is unavailable for the current PM.
@@ -117,3 +125,6 @@ pkg() {
       echo "" ;;
   esac
 }
+
+export DOTFILES_OS PKG_MGR PKG_INSTALL BASE64_DECODE DOTFILES_CLIPBOARD
+export -f sed_inplace pkg

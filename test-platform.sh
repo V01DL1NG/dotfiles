@@ -19,7 +19,6 @@ source_platform() {
     . "$SCRIPT_DIR/platform.sh"
     printf 'OS=%s PKG_MGR=%s\n' "$DOTFILES_OS" "$PKG_MGR"
     printf 'PKG_INSTALL=%s\n' "$PKG_INSTALL"
-    printf 'SED=%s\n' "$SED_INPLACE"
     printf 'B64=%s\n' "$BASE64_DECODE"
     printf 'CLIPBOARD=%s\n' "$DOTFILES_CLIPBOARD"
   )
@@ -32,6 +31,27 @@ check() {
   else
     fail "$label: expected '$expected', got '$actual'"
   fi
+}
+
+# Test sed_inplace() function behavior
+test_sed_inplace() {
+  local force_os="$1"
+  local tmpfile
+  tmpfile="$(mktemp)"
+  echo "hello world" > "$tmpfile"
+  (
+    export _DOTFILES_FORCE_OS="$force_os"
+    export _DOTFILES_FORCE_PKG_MGR="brew"
+    . "$SCRIPT_DIR/platform.sh"
+    sed_inplace 's/hello/goodbye/' "$tmpfile"
+  )
+  local result
+  result="$(cat "$tmpfile")"
+  rm -f "$tmpfile"
+  # no backup files created
+  local backups
+  backups="$(ls "${tmpfile}"* 2>/dev/null | wc -l | tr -d ' ')"
+  printf '%s\n' "$result" "$backups"
 }
 
 # Source platform.sh in a subshell and call pkg() with a given PM
@@ -52,12 +72,23 @@ out="$(source_platform macos brew)"
 check "macos → DOTFILES_OS"  "$(echo "$out" | grep '^OS=' | cut -d= -f2 | awk '{print $1}')" "macos"
 check "macos → PKG_MGR"      "$(echo "$out" | grep '^OS=' | grep -o 'PKG_MGR=[^ ]*' | cut -d= -f2)" "brew"
 check "macos → PKG_INSTALL"  "$(echo "$out" | grep '^PKG_INSTALL=' | cut -d= -f2-)" "brew install"
-check "macos → SED_INPLACE"  "$(echo "$out" | grep '^SED=' | cut -d= -f2-)" "sed -i ''"
 check "macos → BASE64_DECODE" "$(echo "$out" | grep '^B64=' | cut -d= -f2-)" "base64 -D"
 
 out="$(source_platform linux-server apt)"
-check "linux → SED_INPLACE"   "$(echo "$out" | grep '^SED=' | cut -d= -f2-)" "sed -i"
 check "linux → BASE64_DECODE" "$(echo "$out" | grep '^B64=' | cut -d= -f2-)" "base64 -d"
+
+section "sed_inplace() function"
+result="$(test_sed_inplace macos)"
+check "macos sed_inplace — edits file" "$(echo "$result" | head -1)" "goodbye world"
+check "macos sed_inplace — no backup files" "$(echo "$result" | tail -1)" "0"
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  result="$(test_sed_inplace linux-server)"
+  check "linux sed_inplace — edits file" "$(echo "$result" | head -1)" "goodbye world"
+  check "linux sed_inplace — no backup files" "$(echo "$result" | tail -1)" "0"
+else
+  echo "  (linux sed_inplace tests skipped on macOS host — BSD sed can't simulate GNU sed -i)"
+fi
 
 section "DOTFILES_CLIPBOARD"
 # macOS should always be pbcopy
