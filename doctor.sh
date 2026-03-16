@@ -86,7 +86,11 @@ section_prompt() {
         if command -v oh-my-posh >/dev/null 2>&1; then
           pass "oh-my-posh binary found: $(oh-my-posh --version 2>/dev/null | head -1)"
         else
-          fail "oh-my-posh binary not found (brew install jandedobbeleer/oh-my-posh/oh-my-posh)"
+          if [ "$DOTFILES_OS" = "macos" ]; then
+            fail "oh-my-posh binary not found (brew install jandedobbeleer/oh-my-posh/oh-my-posh)"
+          else
+            fail "oh-my-posh binary not found (curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/.local/bin)"
+          fi
         fi
         local theme="$HOME/oh-my-posh/velvet.omp.json"
         if [ -f "$theme" ]; then
@@ -97,17 +101,30 @@ section_prompt() {
       fi
       ;;
     powerlevel10k)
-      local p10k_theme="/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme"
-      if [ -f "$p10k_theme" ]; then
-        pass "powerlevel10k theme found: $p10k_theme"
+      if [ "$DOTFILES_OS" = "linux-server" ]; then
+        warn_count "powerlevel10k check skipped on linux-server (GUI/prompt tools not expected)"
       else
-        fail "powerlevel10k theme not found: $p10k_theme (brew install powerlevel10k)"
-      fi
-      local p10k_cfg="$HOME/.p10k.zsh"
-      if [ -f "$p10k_cfg" ]; then
-        pass "p10k config found: $p10k_cfg"
-      else
-        fail "p10k config missing: $p10k_cfg (run: p10k configure)"
+        local p10k_theme
+        if [ "$DOTFILES_OS" = "macos" ]; then
+          p10k_theme="/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme"
+        else
+          p10k_theme="/usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme"
+        fi
+        if [ -f "$p10k_theme" ]; then
+          pass "powerlevel10k theme found: $p10k_theme"
+        else
+          if [ "$DOTFILES_OS" = "macos" ]; then
+            fail "powerlevel10k theme not found: $p10k_theme (brew install powerlevel10k)"
+          else
+            fail "powerlevel10k theme not found: $p10k_theme (install manually — see https://github.com/romkatv/powerlevel10k)"
+          fi
+        fi
+        local p10k_cfg="$HOME/.p10k.zsh"
+        if [ -f "$p10k_cfg" ]; then
+          pass "p10k config found: $p10k_cfg"
+        else
+          fail "p10k config missing: $p10k_cfg (run: p10k configure)"
+        fi
       fi
       ;;
     plain)

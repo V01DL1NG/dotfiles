@@ -101,6 +101,19 @@ out="$(source_platform linux-server apt)"
 check "linux-server → DOTFILES_CLIPBOARD empty" \
   "$(echo "$out" | grep '^CLIPBOARD=' | cut -d= -f2-)" ""
 
+# linux-desktop with no clipboard tool in PATH → empty (best-effort)
+out="$(source_platform linux-desktop apt)"
+_clipboard="$(echo "$out" | grep '^CLIPBOARD=' | cut -d= -f2-)"
+# On this host, xclip/xsel may or may not be installed. If neither is available,
+# DOTFILES_CLIPBOARD should be empty. This test passes if: it's empty OR one of the
+# expected tools is returned.
+case "$_clipboard" in
+  ""|"xclip -sel clip"|"xsel --clipboard")
+    pass "linux-desktop → DOTFILES_CLIPBOARD is empty or valid tool" ;;
+  *)
+    fail "linux-desktop → DOTFILES_CLIPBOARD unexpected value: '$_clipboard'" ;;
+esac
+
 out="$(source_platform linux-desktop apt)"
 check "linux-desktop → DOTFILES_OS" "$(echo "$out" | grep '^OS=' | cut -d= -f2 | awk '{print $1}')" "linux-desktop"
 check "linux-desktop/apt → PKG_INSTALL" \
