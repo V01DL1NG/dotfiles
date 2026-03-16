@@ -9,6 +9,10 @@
 # ============================================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=platform.sh
+. "$SCRIPT_DIR/platform.sh"
+
 # ── Colors ────────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -43,6 +47,9 @@ echo ""
 
 # ── Section: Homebrew ─────────────────────────────────────────────────────────
 section_brew() {
+  # Homebrew is macOS-only (or optional on Linux — skip check entirely on Linux)
+  [ "$DOTFILES_OS" != "macos" ] && return
+
   header "Homebrew"
 
   if command -v brew >/dev/null 2>&1; then
@@ -73,16 +80,20 @@ section_prompt() {
 
   case "$engine" in
     oh-my-posh)
-      if command -v oh-my-posh >/dev/null 2>&1; then
-        pass "oh-my-posh binary found: $(oh-my-posh --version 2>/dev/null | head -1)"
+      if [ "$DOTFILES_OS" = "linux-server" ]; then
+        warn_count "oh-my-posh check skipped on linux-server (GUI/prompt tools not expected)"
       else
-        fail "oh-my-posh binary not found (brew install jandedobbeleer/oh-my-posh/oh-my-posh)"
-      fi
-      local theme="$HOME/oh-my-posh/velvet.omp.json"
-      if [ -f "$theme" ]; then
-        pass "theme file found: $theme"
-      else
-        fail "theme file missing: $theme"
+        if command -v oh-my-posh >/dev/null 2>&1; then
+          pass "oh-my-posh binary found: $(oh-my-posh --version 2>/dev/null | head -1)"
+        else
+          fail "oh-my-posh binary not found (brew install jandedobbeleer/oh-my-posh/oh-my-posh)"
+        fi
+        local theme="$HOME/oh-my-posh/velvet.omp.json"
+        if [ -f "$theme" ]; then
+          pass "theme file found: $theme"
+        else
+          fail "theme file missing: $theme"
+        fi
       fi
       ;;
     powerlevel10k)
@@ -207,6 +218,9 @@ section_git() {
 
 # ── Section: Nerd Font ────────────────────────────────────────────────────────
 section_font() {
+  # FiraCode font check is macOS-specific (Library/Fonts path)
+  [ "$DOTFILES_OS" != "macos" ] && return
+
   header "Nerd Font (FiraCode)"
 
   if ls ~/Library/Fonts/FiraCode*.ttf \
@@ -221,6 +235,9 @@ section_font() {
 
 # ── Section: iTerm2 ───────────────────────────────────────────────────────────
 section_iterm2() {
+  # iTerm2 is macOS-only
+  [ "$DOTFILES_OS" != "macos" ] && return
+
   header "iTerm2 Dynamic Profiles"
 
   local iterm_profiles_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
@@ -255,6 +272,62 @@ section_roles() {
   done
 }
 
+# ── Section: Linux clipboard ──────────────────────────────────────────────────
+section_linux_clipboard() {
+  # Only run on Linux desktop
+  [ "$DOTFILES_OS" != "linux-desktop" ] && return
+
+  header "Clipboard Tool (Linux Desktop)"
+
+  if command -v xclip >/dev/null 2>&1; then
+    pass "xclip found"
+  elif command -v xsel >/dev/null 2>&1; then
+    pass "xsel found"
+  else
+    warn_count "Neither xclip nor xsel found — clipboard integration will not work (install xclip or xsel)"
+  fi
+}
+
+# ── Section: Linux shell ───────────────────────────────────────────────────────
+section_linux_shell() {
+  # Only run on Linux (any tier)
+  case "$DOTFILES_OS" in linux-*) ;; *) return ;; esac
+
+  header "Linux Shell"
+
+  # Check that zsh is the login shell
+  local zsh_path
+  zsh_path="$(command -v zsh 2>/dev/null || true)"
+  if [ -z "$zsh_path" ]; then
+    fail "zsh not found in PATH"
+  elif [ "$SHELL" = "$zsh_path" ]; then
+    pass "Login shell is zsh ($SHELL)"
+  else
+    warn_count "Login shell is $SHELL — expected zsh ($zsh_path). Run: chsh -s $zsh_path"
+  fi
+
+  # Check that package manager was detected
+  if [ "$PKG_MGR" = "unknown" ]; then
+    warn_count "Package manager not detected (PKG_MGR=unknown) — automatic installs will be skipped"
+  else
+    pass "Package manager: $PKG_MGR"
+  fi
+}
+
+# ── Section: Linux server sanity ──────────────────────────────────────────────
+section_linux_server() {
+  # Only run on linux-server
+  [ "$DOTFILES_OS" != "linux-server" ] && return
+
+  header "Linux Server Sanity"
+
+  if [ -n "${DISPLAY:-}" ]; then
+    warn_count "\$DISPLAY is set ('$DISPLAY') on a headless server — SSH X-forwarding may cause unexpected behavior"
+  else
+    pass "\$DISPLAY not set (expected on headless server)"
+  fi
+}
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 print_summary() {
   echo ""
@@ -274,6 +347,9 @@ main() {
   section_font
   section_iterm2
   section_roles
+  section_linux_shell
+  section_linux_clipboard
+  section_linux_server
   print_summary
 
   if [ "$FAIL" -gt 0 ]; then

@@ -38,6 +38,24 @@ Or run individual setup scripts:
 ./ssh-config.sh     # SSH config
 ```
 
+## Linux Quick Start
+
+**Headless Linux server — one command:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/V01DL1NG/dotfiles/master/bootstrap-server.sh | bash
+```
+
+**Linux desktop — already have the repo:**
+```bash
+./choose-profile.sh          # pick a profile (minimal recommended for first run)
+./install-all.sh             # install tools, git, tmux, nvim
+./doctor.sh                  # verify setup health
+```
+
+Supported package managers: apt (Ubuntu/Debian), dnf (Fedora), pacman (Arch), Homebrew on Linux.
+
+> Note: Some tools (lazygit, delta, atuin) are not available in all package managers. The installer skips them with a warning when unavailable.
+
 ## Profiles
 
 The shell prompt and zsh config come in two flavours. Each installs local file copies — no symlinks — so users can edit freely without touching the repo.
@@ -136,7 +154,7 @@ The container auto-installs missing tools (oh-my-posh or powerlevel10k via Homeb
 |----------|-------------|
 | `meminfo` | Memory usage via native macOS `vm_stat` |
 | `jamflogs` | Tail last 100 lines of Jamf log |
-| `copy` | Pipe stdout to clipboard (`pbcopy`) |
+| `copy` | Pipe stdout to clipboard (`pbcopy` on macOS, `xclip`/`xsel` on Linux desktop) |
 
 ### Neovim (`init.lua` / `nvim-config.sh`)
 
@@ -310,6 +328,8 @@ All configs use a consistent **velvet/sakura** color palette:
 ```
 dotfiles/
 ├── bootstrap.sh                    # curl-installable new Mac setup
+├── bootstrap-server.sh             # curl-installable headless Linux server setup
+├── platform.sh                     # platform detection library (OS, package manager, portability helpers)
 ├── choose-profile.sh               # interactive profile picker (copies files locally)
 ├── profile.sh                      # profile container manager (export / pack / import)
 ├── role.sh                         # machine role manager (apply / remove / list / status)

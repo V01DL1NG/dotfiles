@@ -153,6 +153,42 @@ else
 fi
 
 # ════════════════════════════════════════════════
+section "Linux Platform — Syntax Checks"
+# ════════════════════════════════════════════════
+
+syntax_check() {
+  local file="$1"
+  if bash -n "$SCRIPT_DIR/$file" 2>/dev/null; then
+    pass "bash -n $file"
+  else
+    fail "bash -n $file — syntax error"
+  fi
+}
+
+syntax_check platform.sh
+syntax_check tools-config.sh
+syntax_check git-config.sh
+syntax_check tmux-config.sh
+syntax_check nvim-config.sh
+syntax_check eza-config.sh
+syntax_check install-all.sh
+syntax_check iterm-config.sh
+syntax_check setup.sh
+syntax_check choose-profile.sh
+syntax_check doctor.sh
+syntax_check bootstrap-server.sh
+
+# ════════════════════════════════════════════════
+section "Linux Platform — test-platform.sh"
+# ════════════════════════════════════════════════
+
+if bash "$SCRIPT_DIR/test-platform.sh" >/dev/null 2>&1; then
+  pass "test-platform.sh passed"
+else
+  fail "test-platform.sh — one or more checks failed (run ./test-platform.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
 echo ""
 echo "────────────────────────────────"
 printf "  passed: %d  failed: %d  warnings: %d\n" "$PASS" "$FAIL" "$WARN"
