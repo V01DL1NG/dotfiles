@@ -129,15 +129,27 @@ section_tools() {
     if command -v "$tool" >/dev/null 2>&1; then
       pass "$tool"
     else
-      fail "$tool not found (brew install $tool)"
+      local pkg_name
+      pkg_name="$(pkg "$tool")"
+      if [ -n "$pkg_name" ]; then
+        fail "$tool not found (Install with: $PKG_INSTALL $pkg_name)"
+      else
+        fail "$tool not found (no package available via $PKG_MGR — install manually)"
+      fi
     fi
   done
 
-  # delta is shipped as the 'git-delta' brew package but the binary is `delta`
+  # delta is shipped as 'git-delta' in most package managers but the binary is `delta`
   if command -v delta >/dev/null 2>&1; then
     pass "delta"
   else
-    fail "delta not found (brew install git-delta)"
+    local delta_pkg
+    delta_pkg="$(pkg delta)"
+    if [ -n "$delta_pkg" ]; then
+      fail "delta not found (Install with: $PKG_INSTALL $delta_pkg)"
+    else
+      fail "delta not found (no package available via $PKG_MGR — install manually)"
+    fi
   fi
 }
 
@@ -145,19 +157,39 @@ section_tools() {
 section_plugins() {
   header "Zsh Plugins"
 
-  local plugins=(
-    "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-    "/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-    "/opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh"
+  # Each entry is "logical-name:pkg-name:relative-path-under-share"
+  # We probe Homebrew paths first, then system paths (/usr/share).
+  local plugin_specs=(
+    "zsh-autosuggestions:zsh-autosuggestions:zsh-autosuggestions/zsh-autosuggestions.zsh"
+    "zsh-syntax-highlighting:zsh-syntax-highlighting:zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+    "zsh-history-substring-search:zsh-history-substring-search:zsh-history-substring-search/zsh-history-substring-search.zsh"
   )
 
-  for plugin in "${plugins[@]}"; do
-    local name
-    name="$(basename "$plugin" .zsh)"
-    if [ -f "$plugin" ]; then
-      pass "$name"
+  for spec in "${plugin_specs[@]}"; do
+    local logical pkg rel_path found_path
+    logical="${spec%%:*}"
+    pkg="${spec#*:}"; pkg="${pkg%%:*}"
+    rel_path="${spec##*:}"
+    found_path=""
+
+    # Candidate directories: Homebrew (Intel + Apple Silicon) then system
+    local candidates=(
+      "/opt/homebrew/share/$rel_path"
+      "/usr/local/share/$rel_path"
+      "/usr/share/$rel_path"
+    )
+
+    for candidate in "${candidates[@]}"; do
+      if [ -f "$candidate" ]; then
+        found_path="$candidate"
+        break
+      fi
+    done
+
+    if [ -n "$found_path" ]; then
+      pass "$logical ($found_path)"
     else
-      fail "$name not found at $plugin (brew install ${name})"
+      fail "$logical not found (Install with: $PKG_INSTALL $pkg)"
     fi
   done
 }
