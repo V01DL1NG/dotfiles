@@ -8,15 +8,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ZSHRC="$HOME/.zshrc"
 
 # Ensure eza is installed
-if ! command -v eza >/dev/null 2>&1; then
-  echo "Installing eza..."
-  $PKG_INSTALL "$(pkg eza)"
-fi
+echo "Installing eza..."
+$PKG_INSTALL "$(pkg eza)"
 
 # Ensure fd is installed (used by fzf for file listing)
-if ! command -v fd >/dev/null 2>&1 && ! command -v fdfind >/dev/null 2>&1; then
-  echo "Installing fd..."
-  $PKG_INSTALL "$(pkg fd)"
+echo "Installing fd..."
+$PKG_INSTALL "$(pkg fd)"
+
+# Use pkg() to get the correct binary name for this platform
+_fd_pkg="$(pkg fd)"
+# On apt/dnf, package fd-find installs as 'fdfind'; on brew/pacman it's 'fd'
+if [ "$_fd_pkg" = "fd-find" ]; then
+  _fd_bin="fdfind"
+else
+  _fd_bin="fd"
+fi
+if command -v "$_fd_bin" >/dev/null 2>&1; then
+  : # fzf/eza fd integration setup using $_fd_bin would go here
 fi
 
 # Define aliases
