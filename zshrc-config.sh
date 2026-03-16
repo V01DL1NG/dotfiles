@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/platform.sh"
 ZSHRC="$HOME/.zshrc"
 BACKUP="$ZSHRC.backup.$(date +%Y%m%d%H%M%S)"
 

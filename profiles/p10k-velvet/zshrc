@@ -76,10 +76,10 @@ fi
 alias cls='clear'
 alias whatsmyip='printf "%s\n" "$(curl -s http://ifconfig.me/ip)"'
 
-# copy stdout to clipboard
-copy() {
-	pbcopy 2>/dev/null
-}
+# Portable clipboard copy — pbcopy on macOS, xclip/xsel on Linux desktop
+if [[ -n "$DOTFILES_CLIPBOARD" ]]; then
+  copy() { ${=DOTFILES_CLIPBOARD} }
+fi
 
 # file listing
 alias ll='eza -la --icons'
