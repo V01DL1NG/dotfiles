@@ -35,15 +35,25 @@ usage() {
   echo -e "${BOLD}profile.sh${RESET} — profile container manager"
   echo ""
   echo "  Commands:"
-  printf "    %-45s %s\n" "export [--name NAME] [--desc DESC] [-o FILE]" "snapshot live ~/.zshrc + theme files"
-  printf "    %-45s %s\n" "pack <profile-name> [--name NAME] [-o FILE]"  "pack a profiles/ dir into a container"
-  printf "    %-45s %s\n" "import <container.sh>"                         "install a container (copies files locally)"
-  printf "    %-45s %s\n" "info <container.sh>"                           "show container metadata without installing"
-  printf "    %-45s %s\n" "list"                                          "list built-in profiles"
+  printf "    %-45s %s\n" "export [--name NAME] [--desc DESC] [-o FILE]"  "snapshot live ~/.zshrc + theme files"
+  printf "    %-45s %s\n" "pack <profile-name> [--name NAME] [-o FILE]"   "pack a profiles/ dir into a container"
+  printf "    %-45s %s\n" "patch <profile-name> [--files KEYS] [-o FILE]" "pack only specific files (zshrc,p10k,ghostty…)"
+  printf "    %-45s %s\n" "import <container.sh>"                          "install a container (copies files locally)"
+  printf "    %-45s %s\n" "info <container.sh>"                            "show container metadata without installing"
+  printf "    %-45s %s\n" "diff <container.sh> [other.sh]"                 "diff container vs live files (or vs another)"
+  printf "    %-45s %s\n" "rollback [--list]"                              "restore the most recent backup set"
+  printf "    %-45s %s\n" "push <container.sh> [--private]"                "upload to a GitHub Gist (needs gh CLI)"
+  printf "    %-45s %s\n" "fetch <gist-url>"                               "download + preview + install from a Gist URL"
+  printf "    %-45s %s\n" "list"                                            "list built-in profiles"
   echo ""
   echo "  Examples:"
   echo "    ./profile.sh export --name 'My Setup' -o my-setup.profile.sh"
   echo "    ./profile.sh pack p10k-velvet -o velvet.profile.sh"
+  echo "    ./profile.sh patch velvet --files ghostty,kitty -o terminal.profile.sh"
+  echo "    ./profile.sh push velvet.profile.sh"
+  echo "    ./profile.sh fetch https://gist.github.com/user/abc123"
+  echo "    ./profile.sh diff velvet.profile.sh"
+  echo "    ./profile.sh rollback"
   echo "    ./profile.sh import velvet.profile.sh"
   echo "    ./profile.sh info velvet.profile.sh"
   echo ""
@@ -569,13 +579,404 @@ cmd_list() {
   echo ""
 }
 
+# ── Helper: parse _FILES entries from a container file ───────────────────────
+# Prints one 'dest_expr|base64' line per embedded file (no execution)
+container_entries() {
+  local container="$1"
+  local q="'"
+  awk -v q="$q" '
+    /^_FILES=\(/ { p=1; next }
+    p && /^\)/   { p=0; next }
+    p && NF {
+      line = $0
+      sub("^[[:space:]]*" q, "", line)
+      sub(q "[[:space:]]*$", "", line)
+      if (length(line) > 0) print line
+    }
+  ' "$container"
+}
+
+# Decode a container's embedded files into a flat directory
+extract_to_dir() {
+  local container="$1" dir="$2"
+  local os; os="$(uname -s)"
+  while IFS= read -r entry; do
+    [ -z "$entry" ] && continue
+    local dest_expr="${entry%%|*}" b64="${entry#*|}"
+    local dest fname
+    dest="$(eval "printf '%s' \"$dest_expr\"")"
+    fname="$(basename "$dest")"
+    if [ "$os" = "Darwin" ]; then
+      printf '%s' "$b64" | base64 -D > "$dir/$fname"
+    else
+      printf '%s' "$b64" | base64 -d > "$dir/$fname"
+    fi
+  done < <(container_entries "$container")
+}
+
+# Copy the live installed files (by dest path) into a flat directory
+extract_live_to_dir() {
+  local container="$1" dir="$2"
+  while IFS= read -r entry; do
+    [ -z "$entry" ] && continue
+    local dest_expr="${entry%%|*}"
+    local dest fname
+    dest="$(eval "printf '%s' \"$dest_expr\"")"
+    fname="$(basename "$dest")"
+    [ -f "$dest" ] && cp "$dest" "$dir/$fname"
+  done < <(container_entries "$container")
+}
+
+# ── Command: diff ─────────────────────────────────────────────────────────────
+cmd_diff() {
+  if [[ $# -eq 0 ]]; then
+    error "Usage: profile.sh diff <container.sh> [<other-container.sh>]"
+    exit 1
+  fi
+
+  local left="$1" right="${2:-}"
+  [ -f "$left" ] || { error "Not found: $left"; exit 1; }
+  [ -n "$right" ] && { [ -f "$right" ] || { error "Not found: $right"; exit 1; }; }
+
+  local tmpA tmpB
+  tmpA="$(mktemp -d)"; tmpB="$(mktemp -d)"
+  trap "rm -rf '$tmpA' '$tmpB'" EXIT
+
+  extract_to_dir "$left" "$tmpA"
+
+  if [ -n "$right" ]; then
+    extract_to_dir "$right" "$tmpB"
+    header "Diff: $(basename "$left")  vs  $(basename "$right")"
+  else
+    extract_live_to_dir "$left" "$tmpB"
+    header "Diff: $(basename "$left")  vs  live files"
+  fi
+
+  echo ""
+  local found_diff=false
+
+  for f in "$tmpA"/*; do
+    [ -f "$f" ] || continue
+    local fname; fname="$(basename "$f")"
+    local other="$tmpB/$fname"
+    if [ ! -f "$other" ]; then
+      warn "$fname — not present on the right side"
+      found_diff=true
+    elif diff -q "$f" "$other" >/dev/null 2>&1; then
+      success "$fname — identical"
+    else
+      found_diff=true
+      echo -e "\n${BOLD}--- $fname${RESET}"
+      diff --color=always -u "$other" "$f" || true
+    fi
+  done
+
+  for f in "$tmpB"/*; do
+    [ -f "$f" ] || continue
+    local fname; fname="$(basename "$f")"
+    [ -f "$tmpA/$fname" ] || { warn "$fname — only on right side"; found_diff=true; }
+  done
+
+  echo ""
+  $found_diff || success "No differences found"
+}
+
+# ── Command: rollback ─────────────────────────────────────────────────────────
+cmd_rollback() {
+  local list_only=false
+  for arg in "$@"; do
+    case "$arg" in
+      --list|-l) list_only=true ;;
+      *) error "Unknown option: $arg"; exit 1 ;;
+    esac
+  done
+
+  header "Rollback — restore a previous backup set"
+
+  local -a scan_dirs=("$HOME" "$HOME/oh-my-posh" "$HOME/.config/ghostty" "$HOME/.config/kitty")
+  local iterm_dp="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+  [ -d "$iterm_dp" ] && scan_dirs+=("$iterm_dp")
+
+  local -a bak_files=()
+  while IFS= read -r f; do
+    bak_files+=("$f")
+  done < <(
+    for d in "${scan_dirs[@]}"; do
+      [ -d "$d" ] && find "$d" -maxdepth 1 -name "*.backup.*" 2>/dev/null
+    done | sort
+  )
+
+  if [ ${#bak_files[@]} -eq 0 ]; then
+    warn "No backup files found"
+    return
+  fi
+
+  # Collect unique timestamps (everything after the last .backup.)
+  local -a timestamps=()
+  for f in "${bak_files[@]}"; do
+    local ts="${f##*.backup.}"
+    local seen=false
+    for t in ${timestamps[@]+"${timestamps[@]}"}; do
+      [ "$t" = "$ts" ] && seen=true && break
+    done
+    $seen || timestamps+=("$ts")
+  done
+  IFS=$'\n' timestamps=($(printf '%s\n' "${timestamps[@]}" | sort -r)); unset IFS
+
+  if $list_only; then
+    echo ""
+    echo "  Available backup sets:"
+    echo ""
+    for ts in "${timestamps[@]}"; do
+      local count=0
+      for f in "${bak_files[@]}"; do [[ "$f" == *".backup.$ts" ]] && (( count++ )) || true; done
+      printf "    %s  (%d file(s))\n" "$ts" "$count"
+    done
+    echo ""
+    return
+  fi
+
+  echo ""
+  echo "  Backup sets (most recent first):"
+  echo ""
+  local i=1
+  for ts in "${timestamps[@]}"; do
+    local count=0
+    for f in "${bak_files[@]}"; do [[ "$f" == *".backup.$ts" ]] && (( count++ )) || true; done
+    printf "  ${BOLD}%d)${RESET}  %s  (%d file(s))\n" "$i" "$ts" "$count"
+    (( i++ ))
+  done
+  echo ""
+  echo -e "  ${BOLD}q)${RESET} Cancel"
+  echo ""
+
+  local choice
+  read -r -p "  Choose a set to restore [1]: " choice
+  choice="${choice:-1}"
+  case "$choice" in
+    q|Q) info "Aborted."; return ;;
+    *)
+      if ! [[ "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#timestamps[@]} )); then
+        error "Invalid choice"; exit 1
+      fi
+      ;;
+  esac
+
+  local selected_ts="${timestamps[$((choice - 1))]}"
+  local -a to_restore=()
+  for f in "${bak_files[@]}"; do
+    [[ "$f" == *".backup.$selected_ts" ]] && to_restore+=("$f")
+  done
+
+  echo ""
+  info "Files to restore:"
+  echo ""
+  for bak in "${to_restore[@]}"; do
+    local orig="${bak%.backup.$selected_ts}"
+    printf "    %s\n    → %s\n\n" "$bak" "$orig"
+  done
+
+  read -r -p "  Proceed? [y/N] " confirm
+  case "$confirm" in
+    y|Y)
+      for bak in "${to_restore[@]}"; do
+        local orig="${bak%.backup.$selected_ts}"
+        cp "$bak" "$orig"
+        success "restored $(basename "$orig")"
+      done
+      echo ""
+      success "Rollback complete — source ~/.zshrc or open a new terminal"
+      ;;
+    *) info "Aborted." ;;
+  esac
+}
+
+# ── Command: push ─────────────────────────────────────────────────────────────
+cmd_push() {
+  local container="${1:-}"
+  local public_flag="--public"
+  shift || true
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --private) public_flag=""; shift ;;
+      --public)  public_flag="--public"; shift ;;
+      *) error "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  if [ -z "$container" ] || [ ! -f "$container" ]; then
+    error "Usage: profile.sh push <container.sh> [--private]"
+    exit 1
+  fi
+
+  if ! command -v gh >/dev/null 2>&1; then
+    error "gh CLI not found"
+    info "Install: brew install gh"
+    info "Auth:    gh auth login"
+    exit 1
+  fi
+
+  header "Pushing $(basename "$container") to GitHub Gist"
+
+  local url
+  # shellcheck disable=SC2086
+  url="$(gh gist create $public_flag --filename "$(basename "$container")" "$container")"
+
+  echo ""
+  success "Published → $url"
+  info "Others can install with:"
+  echo ""
+  echo "    ./profile.sh fetch $url"
+  echo ""
+}
+
+# ── Command: fetch ────────────────────────────────────────────────────────────
+cmd_fetch() {
+  local url="${1:-}"
+  if [ -z "$url" ]; then
+    error "Usage: profile.sh fetch <gist-url>"
+    exit 1
+  fi
+
+  header "Fetching profile"
+
+  local tmpfile
+  tmpfile="$(mktemp /tmp/profile-XXXXXX.profile.sh)"
+  trap "rm -f '$tmpfile'" EXIT
+
+  if [[ "$url" =~ gist\.github\.com ]]; then
+    command -v gh >/dev/null 2>&1 || { error "gh CLI required for Gist URLs — install with: brew install gh"; exit 1; }
+    local gist_id="${url##*/}"
+    gh gist view "$gist_id" --raw > "$tmpfile"
+  else
+    command -v curl >/dev/null 2>&1 || { error "curl not found"; exit 1; }
+    curl -fsSL "$url" -o "$tmpfile"
+  fi
+
+  chmod +x "$tmpfile"
+  success "Downloaded"
+
+  bash "$tmpfile" --info
+
+  echo ""
+  read -r -p "  Install this profile? [y/N] " choice
+  case "$choice" in
+    y|Y) bash "$tmpfile" install ;;
+    *)   info "Aborted." ;;
+  esac
+}
+
+# ── Command: patch ────────────────────────────────────────────────────────────
+cmd_patch() {
+  if [[ $# -eq 0 ]]; then
+    error "Usage: profile.sh patch <profile-name> [--files KEYS] [-o FILE]"
+    echo ""
+    echo "  File keys (comma-separated): zshrc, p10k, theme, ghostty, kitty, iterm"
+    echo "  Example:  ./profile.sh patch velvet --files ghostty,kitty -o terminal.profile.sh"
+    echo ""
+    exit 1
+  fi
+
+  local profile_name="$1"; shift
+  local files_arg="" output="" name=""
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --files|-f) files_arg="$2"; shift 2 ;;
+      -o|--output) output="$2";  shift 2 ;;
+      --name|-n)   name="$2";    shift 2 ;;
+      *) error "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  local profile_dir="$PROFILES_DIR/$profile_name"
+  [ -d "$profile_dir" ] || {
+    error "Profile not found: $profile_name"
+    error "Available: $(ls "$PROFILES_DIR" | tr '\n' ' ')"
+    exit 1
+  }
+
+  # Key → src_path|dest_expr
+  local -A key_map=(
+    [zshrc]="$profile_dir/zshrc|\$HOME/.zshrc"
+    [p10k]="$profile_dir/.p10k.zsh|\$HOME/.p10k.zsh"
+    [theme]="$profile_dir/velvet.omp.json|\$HOME/oh-my-posh/velvet.omp.json"
+    [ghostty]="$profile_dir/ghostty.conf|\$HOME/.config/ghostty/config"
+    [kitty]="$profile_dir/kitty.conf|\$HOME/.config/kitty/kitty.conf"
+    [iterm]="$profile_dir/iterm.json|\$HOME/Library/Application Support/iTerm2/DynamicProfiles/${profile_name}.json"
+  )
+  local valid_keys="zshrc, p10k, theme, ghostty, kitty, iterm"
+
+  # Interactive picker if --files not given
+  if [ -z "$files_arg" ]; then
+    echo ""
+    echo "  Available files in '${profile_name}':"
+    echo ""
+    for key in zshrc p10k theme ghostty kitty iterm; do
+      local src="${key_map[$key]%%|*}"
+      [ -f "$src" ] && echo "    $key"
+    done
+    echo ""
+    read -r -p "  Files to include (comma-separated): " files_arg
+    [ -z "$files_arg" ] && { info "Aborted."; exit 0; }
+  fi
+
+  [ -z "$name" ]   && name="${profile_name}-patch"
+  [ -z "$output" ] && output="${profile_name}-patch.profile.sh"
+
+  header "Creating patch '${profile_name}' [${files_arg}] → ${output}"
+
+  local -a entries=()
+  IFS=',' read -ra keys_arr <<< "$files_arg"
+  for raw_key in "${keys_arr[@]}"; do
+    local key="${raw_key// /}"
+    if [[ -v "key_map[$key]" ]]; then
+      local mapping="${key_map[$key]}"
+      local src="${mapping%%|*}" dst_expr="${mapping#*|}"
+      if [ -f "$src" ]; then
+        entries+=( "${dst_expr}|$(b64_file "$src")" )
+        success "packed $key"
+      else
+        warn "$key — not found in $profile_name, skipping"
+      fi
+    else
+      warn "Unknown key: $key  (valid: $valid_keys)"
+    fi
+  done
+
+  if [ ${#entries[@]} -eq 0 ]; then
+    error "No files to pack — aborting"
+    exit 1
+  fi
+
+  local tools=""
+  case "$profile_name" in
+    velvet)                tools="oh-my-posh"    ;;
+    p10k-velvet|catppuccin) tools="powerlevel10k" ;;
+  esac
+
+  generate_container "$name" "Patch for $profile_name — files: ${files_arg}" \
+    "$profile_name" "$tools" "$output" \
+    ${entries[@]+"${entries[@]}"}
+
+  echo ""
+  success "Saved → ${output}"
+  info "Installs only: ${files_arg}"
+  echo ""
+}
+
 # ── Main dispatch ─────────────────────────────────────────────────────────────
 case "${1:-}" in
-  export) shift; cmd_export "$@" ;;
-  pack)   shift; cmd_pack   "$@" ;;
-  import) shift; cmd_import "$@" ;;
-  info)   shift; cmd_info   "$@" ;;
-  list)         cmd_list ;;
+  export)   shift; cmd_export   "$@" ;;
+  pack)     shift; cmd_pack     "$@" ;;
+  patch)    shift; cmd_patch    "$@" ;;
+  import)   shift; cmd_import   "$@" ;;
+  info)     shift; cmd_info     "$@" ;;
+  diff)     shift; cmd_diff     "$@" ;;
+  rollback) shift; cmd_rollback "$@" ;;
+  push)     shift; cmd_push     "$@" ;;
+  fetch)    shift; cmd_fetch    "$@" ;;
+  list)           cmd_list ;;
   -h|--help|help|"") usage ;;
   *) error "Unknown command: $1"; usage; exit 1 ;;
 esac

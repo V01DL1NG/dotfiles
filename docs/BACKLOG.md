@@ -6,10 +6,10 @@ Items are grouped by theme. Check them off as they ship.
 
 ## Container / Profile System
 
-- [ ] **`profile.sh diff`** — compare two containers against each other, or a container against currently installed files; shows a per-file unified diff before committing to an install
-- [ ] **`profile.sh push` / `profile.sh fetch <url>`** — round-trip through a GitHub Gist; `push` creates/updates a Gist and prints the URL, `fetch` downloads, shows `--info`, then prompts to install
-- [ ] **Profile patches** — lightweight containers that only override specific files (e.g. just `.p10k.zsh`); same format as a full container but with a `PATCH=true` flag that merges rather than replaces
-- [ ] **`profile.sh rollback`** — restore the most recent `.backup.*` set that was created during the last install; reads timestamps already written by the installer
+- [x] **`profile.sh diff`** — compare two containers against each other, or a container against currently installed files; shows a per-file unified diff before committing to an install
+- [x] **`profile.sh push` / `profile.sh fetch <url>`** — round-trip through a GitHub Gist; `push` creates/updates a Gist and prints the URL, `fetch` downloads, shows `--info`, then prompts to install
+- [x] **Profile patches** — lightweight containers that only override specific files (e.g. just `.p10k.zsh`); `profile.sh patch <profile> --files ghostty,kitty`
+- [x] **`profile.sh rollback`** — restore the most recent `.backup.*` set that was created during the last install; reads timestamps already written by the installer
 
 ---
 
@@ -53,3 +53,7 @@ Items are grouped by theme. Check them off as they ship.
 - [x] Machine roles — work / personal / server via role.sh
 - [x] Ghostty + Kitty configs — all 4 profiles, auto-detected install, packed into containers
 - [x] update.sh — non-destructive pull + re-apply with three-way conflict detection
+- [x] profile.sh diff — container vs live or container vs container, per-file unified diff
+- [x] profile.sh rollback — grouped backup sets, interactive picker, restore by timestamp
+- [x] profile.sh push/fetch — GitHub Gist round-trip via gh CLI
+- [x] profile.sh patch — lightweight containers with subset of files, interactive key picker
