@@ -66,6 +66,20 @@ install_terminal_configs() {
   fi
 }
 
+# ── Helper: read prompt engine of currently installed profile ─────────────────
+current_engine() {
+  local state_file="$HOME/.config/dotfiles/state"
+  [ -f "$state_file" ] || { echo ""; return; }
+  local prof
+  prof="$(grep '^profile=' "$state_file" 2>/dev/null | cut -d= -f2)"
+  case "$prof" in
+    velvet)               echo "oh-my-posh" ;;
+    p10k-velvet|catppuccin) echo "p10k" ;;
+    minimal)              echo "plain" ;;
+    *)                    echo "" ;;
+  esac
+}
+
 # ── Helper: write state hash file ────────────────────────────────────────────
 write_state() {
   local profile_name="$1"
@@ -101,6 +115,7 @@ install_file() {
 # ── Install: velvet ───────────────────────────────────────────────────────────
 install_velvet() {
   local profile_dir="$PROFILES_DIR/velvet"
+  local _prev_engine; _prev_engine="$(current_engine)"
 
   header "Installing: Velvet"
 
@@ -137,12 +152,13 @@ install_velvet() {
 
   install_terminal_configs "$profile_dir"
   write_state "velvet"
-  _post_install "Velvet" "oh-my-posh" "Velvet"
+  _post_install "Velvet" "oh-my-posh" "Velvet" "$_prev_engine"
 }
 
 # ── Install: p10k-velvet ──────────────────────────────────────────────────────
 install_p10k_velvet() {
   local profile_dir="$PROFILES_DIR/p10k-velvet"
+  local _prev_engine; _prev_engine="$(current_engine)"
 
   header "Installing: P10k Velvet"
 
@@ -178,12 +194,13 @@ install_p10k_velvet() {
 
   install_terminal_configs "$profile_dir"
   write_state "p10k-velvet"
-  _post_install "P10k Velvet" "p10k" "P10k Velvet"
+  _post_install "P10k Velvet" "p10k" "P10k Velvet" "$_prev_engine"
 }
 
 # ── Install: catppuccin ───────────────────────────────────────────────────────
 install_catppuccin() {
   local profile_dir="$PROFILES_DIR/catppuccin"
+  local _prev_engine; _prev_engine="$(current_engine)"
 
   header "Installing: Catppuccin"
 
@@ -219,12 +236,13 @@ install_catppuccin() {
 
   install_terminal_configs "$profile_dir"
   write_state "catppuccin"
-  _post_install "Catppuccin" "p10k" "Catppuccin Mocha"
+  _post_install "Catppuccin" "p10k" "Catppuccin Mocha" "$_prev_engine"
 }
 
 # ── Install: minimal ─────────────────────────────────────────────────────────
 install_minimal() {
   local profile_dir="$PROFILES_DIR/minimal"
+  local _prev_engine; _prev_engine="$(current_engine)"
 
   header "Installing: Minimal"
 
@@ -233,23 +251,32 @@ install_minimal() {
 
   install_terminal_configs "$profile_dir"
   write_state "minimal"
-  _post_install "Minimal" "plain" ""
+  _post_install "Minimal" "plain" "" "$_prev_engine"
 }
 
 # ── Post-install message ──────────────────────────────────────────────────────
-# Args: display_name  engine  iterm_profile_name
+# Args: display_name  engine  iterm_profile_name  [prev_engine]
 _post_install() {
   local name="$1"
   local engine="$2"
   local iterm_profile="$3"
+  local prev_engine="${4:-}"
 
   echo ""
   echo -e "${BOLD}${GREEN}Profile '${name}' installed.${RESET}"
   echo ""
   echo "  Next steps:"
-  echo "    1.  source ~/.zshrc          (or open a new terminal)"
+  if [ -n "$prev_engine" ] && [ "$prev_engine" != "$engine" ]; then
+    # Engine changed — source won't clear the old engine's hooks in this session
+    echo "    1.  Open a new terminal  ← required when switching prompt engines"
+    echo -e "        ${DIM}(source ~/.zshrc won't fully unload ${prev_engine})${RESET}"
+  else
+    echo "    1.  source ~/.zshrc   (or open a new terminal)"
+  fi
+  local step=2
   if [ -n "$iterm_profile" ] && [ -d "$HOME/Library/Application Support/iTerm2" ]; then
-    echo "    2.  In iTerm2 → Preferences → Profiles → set '${iterm_profile}' as default"
+    echo "    ${step}.  In iTerm2 → Preferences → Profiles → set '${iterm_profile}' as default"
+    step=$((step + 1))
   fi
   echo ""
   echo "  Your config files are local copies — edit them freely:"
