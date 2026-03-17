@@ -230,6 +230,29 @@ _set_variant_defaults
 [ "${VARIANTS[clock_pos]:-}" = "right" ] && pass "default clock_pos right" || fail "default clock_pos: ${VARIANTS[clock_pos]:-unset}"
 [ "${VARIANTS[nowplaying_pos]:-}" = "right" ] && pass "default nowplaying_pos right" || fail "default nowplaying_pos: ${VARIANTS[nowplaying_pos]:-unset}"
 
+# ── end-to-end: dry-run output ────────────────────────────────────────────────
+section "end-to-end dry-run"
+
+# Simulate a non-interactive run to verify no writes happen
+before_local="$(cat "$HOME/.tmux.conf.local" 2>/dev/null | md5 || echo 'absent')"
+before_plugins="$(cat "$HOME/.tmux.conf.plugins" 2>/dev/null | md5 || echo 'absent')"
+
+# Call write_local_conf + write_plugins_conf directly in dry-run mode
+ENABLED=(mouse vim_nav vi_copy clipboard clock persistence)
+DISABLED=(smart_scroll nowplaying border_labels)
+declare -A VARIANTS=([prefix]="C-a" [border_style]="double" [statusbar_style]="themed" \
+                     [scrollback]="10000" [copy_cmd]="pbcopy" [clock_pos]="right" [nowplaying_pos]="right")
+DRY_RUN=true; DOTFILES_OS="macos"
+LOCAL_CONF_OUT=""; PLUGINS_CONF_OUT=""
+write_local_conf >/dev/null 2>&1 || true
+write_plugins_conf >/dev/null 2>&1 || true
+
+after_local="$(cat "$HOME/.tmux.conf.local" 2>/dev/null | md5 || echo 'absent')"
+after_plugins="$(cat "$HOME/.tmux.conf.plugins" 2>/dev/null | md5 || echo 'absent')"
+
+[ "$before_local" = "$after_local" ] && pass "dry-run: ~/.tmux.conf.local unchanged" || fail "dry-run: ~/.tmux.conf.local was modified!"
+[ "$before_plugins" = "$after_plugins" ] && pass "dry-run: ~/.tmux.conf.plugins unchanged" || fail "dry-run: ~/.tmux.conf.plugins was modified!"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"

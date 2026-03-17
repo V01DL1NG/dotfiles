@@ -519,6 +519,48 @@ variant_stage() {
   fi
 }
 
+# ── tmux_customise ────────────────────────────────────────────────────────────
+# Orchestrates Stage 1 + Stage 2 + file writes.
+tmux_customise() {
+  header "tmux Customisation"
+
+  # Stage 1: toggle checklist
+  fzf_toggle_stage || {
+    info "Skipping customisation — base config applied."
+    write_plugins_conf_safe_default
+    return
+  }
+
+  if [ "${#ENABLED[@]}" -eq 0 ] && [ "${#DISABLED[@]}" -eq 0 ]; then
+    info "No features selected — skipping customisation."
+    write_plugins_conf_safe_default
+    return
+  fi
+
+  # Stage 2: variant menus
+  variant_stage
+
+  header "Writing configuration"
+  write_local_conf
+  write_plugins_conf
+
+  # Notify if persistence state changed
+  local current_has_resurrect=false
+  [ -f "$HOME/.tmux.conf.plugins" ] && grep -q "tmux-resurrect" "$HOME/.tmux.conf.plugins" 2>/dev/null && current_has_resurrect=true || true
+  local new_has_resurrect=false
+  is_enabled "persistence" && new_has_resurrect=true
+
+  if [ "$current_has_resurrect" != "$new_has_resurrect" ]; then
+    echo ""
+    warn "Restart your tmux server for plugin changes to take effect:"
+    warn "  tmux kill-server && tmux"
+  fi
+
+  echo ""
+  success "tmux customisation complete."
+  info "Reload config in a running session: Ctrl+a then r"
+}
+
 # ── Source-only guard (for testing) ──────────────────────────────────────────
 # Set TMUX_CONFIG_SOURCE_ONLY=1 to source this file without executing install logic.
 if [ "${TMUX_CONFIG_SOURCE_ONLY:-}" != "1" ]; then
@@ -561,9 +603,22 @@ if [ "$DOTFILES_OS" = "macos" ]; then
   chmod +x "$SCRIPT_DIR/now-playing.sh"
 fi
 
+# ── Customisation prompt ────────────────────────────────────────────────────
 echo ""
-echo "Done. To apply:"
-echo "  - In a running tmux session: press Ctrl+a then r"
-echo "  - Or start a fresh tmux session: tmux"
+if [ "$DRY_RUN" = "true" ]; then
+  info "(dry-run mode — no files will be written)"
+  tmux_customise
+elif [ -t 0 ]; then
+  printf "  Customise tmux settings? [Y/n] "
+  read -r reply || true
+  case "${reply:-y}" in
+    [Nn]*) info "Skipping customisation — base config applied."
+           write_plugins_conf_safe_default ;;
+    *)     tmux_customise ;;
+  esac
+else
+  info "Non-interactive — skipping tmux customisation."
+  write_plugins_conf_safe_default
+fi
 
 fi
