@@ -178,7 +178,6 @@ syntax_check choose-profile.sh
 syntax_check doctor.sh
 syntax_check bootstrap-server.sh
 syntax_check macos-defaults.sh
-syntax_check tmux-config.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
