@@ -305,6 +305,100 @@ _write_local_status_bar() {
   fi
 }
 
+# ── Toggle catalog ────────────────────────────────────────────────────────────
+# All toggle labels in display order. nowplaying excluded on Linux at runtime.
+_ALL_TOGGLES=(
+  "[Mouse]       Enable mouse support|mouse"
+  "[Mouse]       Smart scroll (pass-through for vim/less)|smart_scroll"
+  "[Navigation]  Vim-style pane nav (h/j/k/l)|vim_nav"
+  "[Copy]        Vi copy mode keys|vi_copy"
+  "[Copy]        Clipboard integration|clipboard"
+  "[Status Bar]  Now-playing widget|nowplaying"
+  "[Status Bar]  Clock|clock"
+  "[Pane]        Border labels (index + current command)|border_labels"
+  "[Session]     Session persistence (resurrect + continuum)|persistence"
+)
+
+# ── _apply_preset <full|minimal> ──────────────────────────────────────────────
+# Pre-populates ENABLED[] and DISABLED[] from a named preset.
+_apply_preset() {
+  local preset="$1"
+  ENABLED=()
+  DISABLED=()
+  case "$preset" in
+    full)
+      for entry in "${_ALL_TOGGLES[@]}"; do
+        local key="${entry##*|}"
+        [ "$key" = "nowplaying" ] && [ "$DOTFILES_OS" != "macos" ] && continue
+        ENABLED+=("$key")
+      done
+      ;;
+    minimal)
+      # enabled: mouse smart_scroll vim_nav vi_copy clipboard clock
+      # disabled: nowplaying border_labels persistence
+      ENABLED=(mouse smart_scroll vim_nav vi_copy clipboard clock)
+      DISABLED=(nowplaying border_labels persistence)
+      ;;
+  esac
+}
+
+# ── fzf_toggle_stage ──────────────────────────────────────────────────────────
+# Runs Stage 1. Populates ENABLED[] and DISABLED[].
+# Uses fzf if available; falls back to select preset menu.
+fzf_toggle_stage() {
+  ENABLED=(); DISABLED=()
+
+  if ! command -v fzf >/dev/null 2>&1; then
+    warn "fzf not found — install it for per-feature selection (tools-config.sh installs it automatically)"
+    echo ""
+    local choice
+    PS3="  Choose a preset: "
+    select choice in \
+      "Full — all features enabled, current defaults" \
+      "Minimal — mouse on, vim nav on, no status bar bling, no persistence" \
+      "Skip — no customisation"; do
+      case "$REPLY" in
+        1) _apply_preset "full";    break ;;
+        2) _apply_preset "minimal"; break ;;
+        3) ENABLED=(); DISABLED=(); return 1 ;;  # signal skip
+        *) echo "  Enter 1, 2, or 3." ;;
+      esac
+    done || true  # guard against Ctrl-D
+    return 0
+  fi
+
+  # Build fzf input — one label per line, nowplaying excluded on Linux
+  local labels=()
+  for entry in "${_ALL_TOGGLES[@]}"; do
+    local label="${entry%%|*}"
+    local key="${entry##*|}"
+    [ "$key" = "nowplaying" ] && [ "$DOTFILES_OS" != "macos" ] && continue
+    labels+=("$label")
+  done
+
+  local selected
+  selected="$(printf '%s\n' "${labels[@]}" \
+    | fzf --multi \
+          --prompt "Toggle features > " \
+          --header "Space/Tab to toggle · Enter to confirm · Esc to skip" \
+          --height "80%" \
+          --reverse \
+          --bind "start:select-all" \
+    || true)"
+
+  # Map selected labels back to keys
+  for entry in "${_ALL_TOGGLES[@]}"; do
+    local label="${entry%%|*}"
+    local key="${entry##*|}"
+    [ "$key" = "nowplaying" ] && [ "$DOTFILES_OS" != "macos" ] && continue
+    if echo "$selected" | grep -qF "$label"; then
+      ENABLED+=("$key")
+    else
+      DISABLED+=("$key")
+    fi
+  done
+}
+
 # ── Source-only guard (for testing) ──────────────────────────────────────────
 # Set TMUX_CONFIG_SOURCE_ONLY=1 to source this file without executing install logic.
 if [ "${TMUX_CONFIG_SOURCE_ONLY:-}" != "1" ]; then

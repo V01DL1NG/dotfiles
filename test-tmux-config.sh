@@ -198,6 +198,20 @@ out="$(_sb)"
 echo "$out" | grep -q '%H:%M' && pass "np-off clock-left: clock present" || fail "np-off clock-left: clock missing"
 echo "$out" | grep -q 'status-right ""' && pass "np-off clock-left: status-right cleared" || fail "np-off clock-left: status-right not cleared"
 
+# ── fzf fallback presets ──────────────────────────────────────────────────────
+section "fzf fallback: preset key mappings"
+
+ENABLED=(); DISABLED=()
+_apply_preset "full"
+is_enabled "mouse"       && pass "full preset: mouse enabled"  || fail "full preset: mouse disabled"
+is_enabled "persistence" && pass "full preset: persistence enabled" || fail "full preset: persistence missing"
+
+ENABLED=(); DISABLED=()
+_apply_preset "minimal"
+is_enabled "mouse"        && pass "minimal preset: mouse enabled"  || fail "minimal preset: mouse disabled"
+is_enabled "persistence"  && fail "minimal preset: persistence should be disabled" || pass "minimal preset: persistence disabled"
+is_enabled "border_labels" && fail "minimal preset: border_labels should be disabled" || pass "minimal preset: border_labels disabled"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
