@@ -67,6 +67,18 @@ else
   fi
 fi
 
+# macos-defaults.sh — macOS only, interactive by design
+# (bootstrap.sh passes 'minimal' for automated runs)
+echo ""
+if [ "$DOTFILES_OS" = "macos" ]; then
+  echo "-- [macOS System Defaults] --"
+  if [ -f "$SCRIPT_DIR/macos-defaults.sh" ]; then
+    bash "$SCRIPT_DIR/macos-defaults.sh"
+  else
+    echo "Warning: macos-defaults.sh not found, skipping."
+  fi
+fi
+
 echo ""
 echo "=================================="
 echo "  Setup complete!"

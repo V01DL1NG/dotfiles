@@ -136,6 +136,9 @@ run_setup() {
   header "Choosing shell profile"
   bash "$REPO_DIR/choose-profile.sh"
 
+  header "Applying macOS system defaults (minimal preset)"
+  bash "$REPO_DIR/macos-defaults.sh" minimal
+
   header "Running full install"
   bash "$REPO_DIR/install-all.sh"
 }
