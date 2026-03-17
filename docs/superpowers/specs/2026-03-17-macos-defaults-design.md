@@ -84,9 +84,15 @@ Per-setting granularity is not available without fzf. A warning is printed: `"fz
 
 All writes are to the current user's domain. No `sudo` required. All settings are user-domain writes tested on macOS 12+.
 
-**Exception — Safari (macOS 13+ caveat):** On macOS 13 Ventura and later, Safari runs in a sandboxed container. `defaults write com.apple.Safari` calls from a non-sandboxed context are silently ignored. The Safari settings in this catalog target macOS 12 (Monterey). On macOS 13+, users must enable the developer menu manually via Safari → Settings → Advanced. The script will still write the values (they are harmless); a warning is printed when Safari settings are selected on macOS 13+.
+**macOS version detection:** Both caveats below require detecting the major OS version. Use this canonical helper (defined once in the script):
 
-**Exception — 24-hour clock (macOS 12 only):** `com.apple.menuextra.clock Show24Hour` is valid on macOS 12. On macOS 13+, use System Settings → General → Language & Region → 24-hour time instead. The script skips this write on macOS 13+ and prints a note.
+```bash
+_macos_major() { sw_vers -productVersion | cut -d. -f1; }
+```
+
+**Exception — Safari (macOS 13+ caveat):** On macOS 13 Ventura and later, Safari runs in a sandboxed container. `defaults write com.apple.Safari` calls from a non-sandboxed context are silently ignored. The Safari settings in this catalog target macOS 12 (Monterey). On macOS 13+, users must enable the developer menu manually via Safari → Settings → Advanced. The script will still write the values (they are harmless); when Safari settings are selected and `_macos_major` returns ≥ 13, a warning is printed: `"Note: Safari defaults write is ignored on macOS 13+ — enable developer tools in Safari Settings → Advanced."`.
+
+**Exception — 24-hour clock (macOS 12 only):** `com.apple.menuextra.clock Show24Hour` is valid on macOS 12. On macOS 13+, use System Settings → General → Language & Region → 24-hour time instead. When `_macos_major` returns ≥ 13, the script skips this write and prints: `"Note: 24-hour clock setting skipped — configure in System Settings → General → Language & Region on macOS 13+."`
 
 ### Keyboard (requires logout to take full effect — reminder shown if any Keyboard setting selected)
 
@@ -177,6 +183,8 @@ killall Finder || true
 killall Dock || true
 
 # If any System (battery/clock) or Safari setting selected
+# Note: On macOS 13+, Show24Hour is skipped; if it was the only System setting
+# selected, these restarts are technically unnecessary but harmless.
 killall SystemUIServer || true
 killall ControlCenter || true
 
@@ -227,7 +235,8 @@ Two new checks in the macOS section:
 |---|---|
 | Non-macOS OS | `exit 0` with `info "Skipping macOS defaults (macOS only)"` |
 | `fzf` not installed | Fall back to `select` preset menu (see fzf fallback above) |
-| `--dry-run` | fzf still opens interactively; no `defaults write` or `killall` runs; each command printed to stdout |
+| `--dry-run` (no preset) | fzf opens so the user can review; no `defaults write` or `killall` runs; each command printed to stdout |
+| `--dry-run` (with preset) | fzf does not open; selected preset's commands printed to stdout; nothing executed |
 | No settings selected | `exit 0` with `info "No settings selected — nothing applied"` |
 | `killall` fails | Guarded with `|| true` — failure is silently swallowed; script continues |
 | `defaults write` silent failure | Not detectable without `sudo` introspection; script proceeds; doctor.sh detects KeyRepeat as a proxy |
