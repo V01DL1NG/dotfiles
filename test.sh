@@ -177,6 +177,7 @@ syntax_check setup.sh
 syntax_check choose-profile.sh
 syntax_check doctor.sh
 syntax_check bootstrap-server.sh
+syntax_check macos-defaults.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
@@ -186,6 +187,18 @@ if bash "$SCRIPT_DIR/test-platform.sh" >/dev/null 2>&1; then
   pass "test-platform.sh passed"
 else
   fail "test-platform.sh — one or more checks failed (run ./test-platform.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
+section "macOS Defaults — test-macos-defaults.sh"
+# ════════════════════════════════════════════════
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  warn "test-macos-defaults.sh skipped (macOS only)"
+elif bash "$SCRIPT_DIR/test-macos-defaults.sh" >/dev/null 2>&1; then
+  pass "test-macos-defaults.sh passed"
+else
+  fail "test-macos-defaults.sh — one or more checks failed (run ./test-macos-defaults.sh for details)"
 fi
 
 # ════════════════════════════════════════════════
