@@ -19,7 +19,6 @@ scripts=(
   "eza-config.sh:Eza file listing"
   "tools-config.sh:Terminal tools (fzf, bat, lazygit, btop, zsh plugins)"
   "git-config.sh:Git config + delta"
-  "tmux-config.sh:Tmux + now-playing"
   "nvim-config.sh:Neovim + LSP servers"
   "zshrc-config.sh:Zsh config"
   "ssh-config.sh:SSH config"
@@ -65,6 +64,15 @@ else
   else
     echo "Warning: iterm-config.sh not found, skipping."
   fi
+fi
+
+# tmux-config.sh — moved to end for interactive customisation prompt
+echo ""
+echo "-- [Tmux + customisation] --"
+if [ -f "$SCRIPT_DIR/tmux-config.sh" ]; then
+  bash "$SCRIPT_DIR/tmux-config.sh"
+else
+  echo "Warning: tmux-config.sh not found, skipping."
 fi
 
 # macos-defaults.sh — macOS only, interactive by design
