@@ -305,6 +305,30 @@ section_iterm2() {
   fi
 }
 
+# ── Section: macOS defaults ───────────────────────────────────────────────────
+section_macos_defaults() {
+  # macOS-only checks — skip on Linux
+  [ "$DOTFILES_OS" != "macos" ] && return
+
+  header "macOS System Defaults"
+
+  # Check 1: Screenshots directory
+  if [ -d "$HOME/Desktop/Screenshots" ]; then
+    pass "~/Desktop/Screenshots directory exists"
+  else
+    warn_count "~/Desktop/Screenshots not found — run: ./macos-defaults.sh"
+  fi
+
+  # Check 2: KeyRepeat — macOS default is 6; anything >= 6 means defaults not applied
+  local key_repeat
+  key_repeat="$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null || echo 99)"
+  if [ "$key_repeat" -lt 6 ] 2>/dev/null; then
+    pass "KeyRepeat = $key_repeat (fast repeat configured)"
+  else
+    warn_count "KeyRepeat = $key_repeat (macOS default or higher) — run: ./macos-defaults.sh"
+  fi
+}
+
 # ── Section: Roles ────────────────────────────────────────────────────────────
 section_roles() {
   header "Shell Roles"
@@ -395,6 +419,7 @@ main() {
   section_git
   section_font
   section_iterm2
+  section_macos_defaults
   section_roles
   section_linux_shell
   section_linux_clipboard
