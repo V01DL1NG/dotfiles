@@ -178,6 +178,7 @@ syntax_check choose-profile.sh
 syntax_check doctor.sh
 syntax_check bootstrap-server.sh
 syntax_check macos-defaults.sh
+syntax_check tmux-config.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
@@ -199,6 +200,16 @@ elif bash "$SCRIPT_DIR/test-macos-defaults.sh" >/dev/null 2>&1; then
   pass "test-macos-defaults.sh passed"
 else
   fail "test-macos-defaults.sh — one or more checks failed (run ./test-macos-defaults.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
+section "tmux Config — test-tmux-config.sh"
+# ════════════════════════════════════════════════
+
+if bash "$SCRIPT_DIR/test-tmux-config.sh" >/dev/null 2>&1; then
+  pass "test-tmux-config.sh passed"
+else
+  fail "test-tmux-config.sh — one or more checks failed (run ./test-tmux-config.sh for details)"
 fi
 
 # ════════════════════════════════════════════════
