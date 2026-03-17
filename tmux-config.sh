@@ -226,8 +226,84 @@ write_local_conf() {
   success "Written: $local_file"
 }
 
-# Stub — implemented in Task 5
-_write_local_status_bar() { :; }
+_write_local_status_bar() {
+  local style="${VARIANTS[statusbar_style]:-themed}"
+  local np_pos="${VARIANTS[nowplaying_pos]:-right}"
+  local cl_pos="${VARIANTS[clock_pos]:-right}"
+  local np_on=false; local cl_on=false
+  is_enabled "nowplaying" && np_on=true
+  is_enabled "clock"      && cl_on=true
+
+  # ── Minimal style ─────────────────────────────────────────────────────────
+  if [ "$style" = "minimal" ]; then
+    write_to_local ""
+    write_to_local "# ── Status bar (minimal) ─────────────────────────────────────────────────────"
+    write_to_local "set -g status-left \" #S \""
+    write_to_local "set -g status-left-length 20"
+    write_to_local "set -g status-right \" %H:%M \""
+    write_to_local "set -g status-right-length 15"
+    return
+  fi
+
+  # ── Themed style — check if any positional override is needed ─────────────
+  # Base default: nowplaying=right, clock=right (both enabled). No override needed.
+  local need_override=false
+  if [ "$np_on" = "true" ] && [ "$cl_on" = "true" ]; then
+    if [ "$np_pos" != "right" ] || [ "$cl_pos" != "right" ]; then
+      need_override=true
+    fi
+  elif [ "$np_on" = "false" ] || [ "$cl_on" = "false" ]; then
+    # Any disabled widget requires overriding the status bar
+    need_override=true
+  fi
+
+  [ "$need_override" = "false" ] && return
+
+  write_to_local ""
+  write_to_local "# ── Status bar ───────────────────────────────────────────────────────────────"
+
+  local NP="#(\$HOME/.tmux/now-playing.sh)"
+  local CL="#[fg=#4c1f5e]\ue0b6#[bg=#4c1f5e,fg=#EFDCF9]  %H:%M "
+  local NP_SEG="#[fg=#341948]\ue0b6#[bg=#341948,fg=#EFDCF9] $NP "
+  local BASE_LEFT="#[bg=#69307A,fg=#EFDCF9,bold]  #S #[bg=#170B3B,fg=#69307A]\ue0b4"
+
+  if [ "$np_on" = "true" ] && [ "$cl_on" = "true" ]; then
+    # np-right, clock-left
+    if [ "$np_pos" = "right" ] && [ "$cl_pos" = "left" ]; then
+      write_to_local "set -g status-left \"${BASE_LEFT} ${CL}\""
+      write_to_local "set -g status-left-length 50"
+      write_to_local "set -g status-right \"${NP_SEG}\""
+      write_to_local "set -g status-right-length 60"
+    # np-left, clock-right
+    elif [ "$np_pos" = "left" ] && [ "$cl_pos" = "right" ]; then
+      write_to_local "set -g status-left \"${BASE_LEFT} ${NP_SEG}\""
+      write_to_local "set -g status-left-length 80"
+      write_to_local "set -g status-right \"${CL}\""
+      write_to_local "set -g status-right-length 15"
+    # both left
+    else
+      write_to_local "set -g status-left \"${BASE_LEFT} ${NP_SEG} ${CL}\""
+      write_to_local "set -g status-left-length 100"
+      write_to_local "set -g status-right \"\""
+      write_to_local "set -g status-right-length 0"
+    fi
+  elif [ "$np_on" = "false" ] && [ "$cl_on" = "true" ]; then
+    if [ "$cl_pos" = "right" ]; then
+      write_to_local "set -g status-right \"${CL}\""
+      write_to_local "set -g status-right-length 15"
+    else
+      # clock left
+      write_to_local "set -g status-left \"${BASE_LEFT} ${CL}\""
+      write_to_local "set -g status-left-length 60"
+      write_to_local "set -g status-right \"\""
+      write_to_local "set -g status-right-length 0"
+    fi
+  else
+    # both off
+    write_to_local "set -g status-right \"\""
+    write_to_local "set -g status-right-length 0"
+  fi
+}
 
 # ── Source-only guard (for testing) ──────────────────────────────────────────
 # Set TMUX_CONFIG_SOURCE_ONLY=1 to source this file without executing install logic.

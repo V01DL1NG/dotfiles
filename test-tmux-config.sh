@@ -138,6 +138,66 @@ ENABLED=(mouse vim_nav vi_copy clock persistence)
 out="$(_test_local_conf)"
 echo "$out" | grep -q "unbind -T copy-mode-vi y" && pass "clipboard disabled: unbind written" || fail "clipboard disabled: unbind missing"
 
+# ── write_local_conf — status bar ─────────────────────────────────────────────
+section "write_local_conf: status bar"
+
+_sb() {
+  ENABLED=(mouse vim_nav vi_copy clipboard clock persistence "$@")
+  DISABLED=(smart_scroll border_labels)
+  VARIANTS[prefix]="${VARIANTS[prefix]:-C-a}"
+  VARIANTS[border_style]="${VARIANTS[border_style]:-double}"
+  VARIANTS[scrollback]="${VARIANTS[scrollback]:-10000}"
+  VARIANTS[copy_cmd]="${VARIANTS[copy_cmd]:-pbcopy}"
+  VARIANTS[statusbar_style]="${VARIANTS[statusbar_style]:-themed}"
+  VARIANTS[clock_pos]="${VARIANTS[clock_pos]:-right}"
+  LOCAL_CONF_OUT=""
+  DRY_RUN=true
+  DOTFILES_OS="macos"
+  write_local_conf
+  echo "$LOCAL_CONF_OUT"
+}
+
+# Minimal style
+VARIANTS[statusbar_style]="minimal"
+out="$(_sb)"
+echo "$out" | grep -q 'status-left " #S "' && pass "minimal: plain status-left" || fail "minimal: plain status-left missing"
+echo "$out" | grep -q 'status-right " %H:%M "' && pass "minimal: plain status-right" || fail "minimal: plain status-right missing"
+
+# Both right (base default) — no status bar override written
+declare -A VARIANTS=()
+VARIANTS[nowplaying_pos]="right"; VARIANTS[clock_pos]="right"
+out="$(_sb nowplaying)"
+echo "$out" | grep -q "status-left " && fail "both right: should not write status-bar override" || pass "both right: no override"
+
+# Now-playing left, clock right
+VARIANTS[nowplaying_pos]="left"
+out="$(_sb nowplaying)"
+echo "$out" | grep -q 'now-playing.sh' && pass "np-left: now-playing in status-left" || fail "np-left: now-playing missing from status-left"
+echo "$out" | grep -q '%H:%M' && pass "np-left: clock present" || fail "np-left: clock missing"
+
+# Now-playing right, clock left
+VARIANTS[nowplaying_pos]="right"; VARIANTS[clock_pos]="left"
+out="$(_sb nowplaying)"
+echo "$out" | grep -q '%H:%M' && pass "clock-left: clock present in output" || fail "clock-left: clock missing"
+
+# Both left
+VARIANTS[nowplaying_pos]="left"; VARIANTS[clock_pos]="left"
+out="$(_sb nowplaying)"
+echo "$out" | grep -q 'status-right ""' && pass "both-left: status-right cleared" || fail "both-left: status-right not cleared"
+
+# Nowplaying disabled, clock right (default)
+declare -A VARIANTS=()
+VARIANTS[nowplaying_pos]="right"; VARIANTS[clock_pos]="right"
+out="$(_sb)"
+echo "$out" | grep -q 'now-playing.sh' && fail "np-off clock-right: now-playing should be absent" || pass "np-off clock-right: now-playing absent"
+echo "$out" | grep -q '%H:%M' && pass "np-off clock-right: clock present" || fail "np-off clock-right: clock missing"
+
+# Nowplaying disabled, clock left
+VARIANTS[clock_pos]="left"
+out="$(_sb)"
+echo "$out" | grep -q '%H:%M' && pass "np-off clock-left: clock present" || fail "np-off clock-left: clock missing"
+echo "$out" | grep -q 'status-right ""' && pass "np-off clock-left: status-right cleared" || fail "np-off clock-left: status-right not cleared"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
