@@ -428,11 +428,12 @@ _pick_with_fzf() {
     return
   fi
 
-  local selected
+  local selected=""
   case "$mode" in
     opinionated) selected="$(_fzf_pick "start:select-all")" ;;
     minimal)     selected="$(_fzf_pick "$(_fzf_minimal_bind)")" ;;
     custom)      selected="$(_fzf_pick "")" ;;
+    *)           warn "Unknown fzf mode: $mode"; return ;;
   esac
 
   # Convert newline-separated output to array
@@ -477,22 +478,53 @@ _fallback_no_fzf() {
   esac
 }
 
-# ── Preset dispatch (non-interactive) ─────────────────────────────────────────
-# Temporary: applies preset settings for dry-run tests before main() is wired.
-# This block will be removed and replaced by main() in Task 4.
-# NOTE: Task 4 must DELETE this block (not just add main below it),
-# otherwise preset mode will double-apply every setting.
-if [ -n "$PRESET" ]; then
-  case "$PRESET" in
-    minimal)
-      for s in "${MINIMAL_SETTINGS[@]}"; do
-        apply_one_setting "$s"
-      done
-      ;;
-    opinionated)
-      for s in "${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}"; do
-        apply_one_setting "$s"
-      done
-      ;;
-  esac
-fi
+# ── main ─────────────────────────────────────────────────────────────────────
+main() {
+  if [ -n "$PRESET" ]; then
+    # ── Non-interactive preset mode ─────────────────────────────────────────
+    header "Applying preset: $PRESET"
+
+    if [ "$DRY_RUN" = "true" ]; then
+      info "(dry-run — commands printed, nothing applied)"
+      echo ""
+    fi
+
+    case "$PRESET" in
+      minimal)     apply_list "${MINIMAL_SETTINGS[@]}" ;;
+      opinionated) apply_list "${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}" ;;
+    esac
+
+  else
+    # ── Interactive mode ────────────────────────────────────────────────────
+    if [ "$DRY_RUN" = "true" ]; then
+      info "(dry-run — commands printed, nothing applied)"
+    fi
+
+    pick_interactive
+
+    if [ "${#SELECTED_SETTINGS[@]}" -eq 0 ]; then
+      info "No settings selected — nothing applied"
+      exit 0
+    fi
+
+    header "Applying ${#SELECTED_SETTINGS[@]} setting(s)"
+
+    if [ "$DRY_RUN" = "true" ]; then
+      echo ""
+    fi
+
+    apply_list "${SELECTED_SETTINGS[@]}"
+  fi
+
+  # ── Restart services ──────────────────────────────────────────────────────
+  restart_services
+
+  # ── Done ──────────────────────────────────────────────────────────────────
+  echo ""
+  success "Done."
+  if [ "$DRY_RUN" = "true" ]; then
+    info "(dry-run complete — no changes were made)"
+  fi
+}
+
+main
