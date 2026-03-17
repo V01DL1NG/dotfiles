@@ -40,18 +40,20 @@ The script uses `set -euo pipefail`. All `killall` calls are guarded with `|| tr
 ### fzf pre-selection mechanism
 
 Settings are stored in two ordered arrays:
-- `MINIMAL_SETTINGS` — 11 entries (the minimal preset)
-- `EXTRA_SETTINGS` — 21 entries (opinionated-only additions)
+- `MINIMAL_SETTINGS` — 9 entries (the minimal preset)
+- `EXTRA_SETTINGS` — 23 entries (opinionated-only additions)
 
 For the fzf call, input is always the full 32 settings. Pre-selection is achieved by listing `MINIMAL_SETTINGS` entries first in the input, then `EXTRA_SETTINGS`. The fzf invocation:
+
+Requires fzf >= 0.30 (for `start:` event and action chaining with `+`).
 
 ```bash
 # opinionated: all pre-selected
 printf '%s\n' "${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}" \
   | fzf --multi --bind 'start:select-all' ...
 
-# minimal: only the first N items pre-selected (N = ${#MINIMAL_SETTINGS[@]} = 11)
-# achieved by passing minimal items first and selecting only them:
+# minimal: only the first N items pre-selected (N = ${#MINIMAL_SETTINGS[@]} = 9)
+# achieved by passing minimal items first, then selecting only them via cursor walk:
 printf '%s\n' "${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}" \
   | fzf --multi --bind "start:first+select$(printf '+down+select%.0s' $(seq 2 ${#MINIMAL_SETTINGS[@]}))" ...
 
@@ -60,6 +62,8 @@ printf '%s\n' "${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}" \
   | fzf --multi ...
 ```
 
+`first` moves the cursor to the first item, `select` selects it, then `+down+select` repeats for each remaining minimal item. The `printf '+down+select%.0s'` trick uses `%.0s` to emit the fixed string N-1 times by discarding the seq argument, producing the correct chained binding.
+
 Each fzf line format: `[Category]  Setting description` — the category prefix makes the flat list scannable without sub-menus.
 
 ### fzf fallback (fzf not installed)
@@ -67,7 +71,7 @@ Each fzf line format: `[Category]  Setting description` — the category prefix 
 If `fzf` is not available, the interactive flow degrades to a `select`-based preset-only menu:
 
 ```
-1) Minimal      — keyboard feel, tap-to-click, file hygiene, save panels (11 settings)
+1) Minimal      — keyboard feel, tap-to-click, file hygiene, save panels (9 settings)
 2) Opinionated  — everything (32 settings)
 3) Skip         — do nothing
 ```
@@ -78,7 +82,11 @@ Per-setting granularity is not available without fzf. A warning is printed: `"fz
 
 ## Component 2 — Settings catalog with defaults commands
 
-All writes are to the current user's domain. No `sudo` required. All settings are confirmed user-domain writes safe on macOS 12+.
+All writes are to the current user's domain. No `sudo` required. All settings are user-domain writes tested on macOS 12+.
+
+**Exception — Safari (macOS 13+ caveat):** On macOS 13 Ventura and later, Safari runs in a sandboxed container. `defaults write com.apple.Safari` calls from a non-sandboxed context are silently ignored. The Safari settings in this catalog target macOS 12 (Monterey). On macOS 13+, users must enable the developer menu manually via Safari → Settings → Advanced. The script will still write the values (they are harmless); a warning is printed when Safari settings are selected on macOS 13+.
+
+**Exception — 24-hour clock (macOS 12 only):** `com.apple.menuextra.clock Show24Hour` is valid on macOS 12. On macOS 13+, use System Settings → General → Language & Region → 24-hour time instead. The script skips this write on macOS 13+ and prints a note.
 
 ### Keyboard (requires logout to take full effect — reminder shown if any Keyboard setting selected)
 
@@ -190,7 +198,10 @@ New step, macOS-only gated:
 
 ```bash
 if [ "$DOTFILES_OS" = "macos" ]; then
-  bash "$SCRIPT_DIR/macos-defaults.sh"   # interactive by default
+  # Interactive by design: install-all.sh is run by the user at a terminal,
+  # so pausing for the defaults picker is intentional. For fully automated
+  # runs, pass 'minimal' (as bootstrap.sh does).
+  bash "$SCRIPT_DIR/macos-defaults.sh"
 fi
 ```
 
@@ -218,5 +229,5 @@ Two new checks in the macOS section:
 | `fzf` not installed | Fall back to `select` preset menu (see fzf fallback above) |
 | `--dry-run` | fzf still opens interactively; no `defaults write` or `killall` runs; each command printed to stdout |
 | No settings selected | `exit 0` with `info "No settings selected — nothing applied"` |
-| `killall` fails | Guarded with `|| true` — warn if service was open, continue |
+| `killall` fails | Guarded with `|| true` — failure is silently swallowed; script continues |
 | `defaults write` silent failure | Not detectable without `sudo` introspection; script proceeds; doctor.sh detects KeyRepeat as a proxy |
