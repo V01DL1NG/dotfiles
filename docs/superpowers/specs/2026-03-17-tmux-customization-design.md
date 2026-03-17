@@ -53,7 +53,7 @@ fi
 
 When the user skips customisation and `~/.tmux.conf.plugins` does not yet exist, `tmux-config.sh` writes it with persistence **enabled** as the safe default — preserving the same behaviour as the current base config (see Component 3).
 
-`--dry-run` flag: if `tmux-config.sh` is called with `--dry-run`, the TUI runs normally but `write_local_conf()` prints the generated file contents to stdout instead of writing to disk. Consistent with `macos-defaults.sh` convention.
+`--dry-run` flag: if `tmux-config.sh` is called with `--dry-run`, the TUI runs normally but `write_local_conf()` and `write_plugins_conf()` print the generated file contents to stdout instead of writing to disk. Consistent with `macos-defaults.sh` convention. `install-all.sh` does **not** forward `--dry-run` to `tmux-config.sh`; invoke `tmux-config.sh` directly for dry-run mode.
 
 ### 2b. `tmux_customise` function
 
@@ -196,10 +196,24 @@ set -g status-right " %H:%M "
 set -g status-right-length 15
 ```
 
-*When now-playing is disabled (macOS only):*
+*When now-playing is disabled, clock right (macOS only):*
 ```tmux
 set -g status-right "#[fg=#4c1f5e]\ue0b6#[bg=#4c1f5e,fg=#EFDCF9]  %H:%M "
 set -g status-right-length 15
+```
+
+*When now-playing is disabled, clock left (macOS only):*
+```tmux
+set -g status-left "#[bg=#69307A,fg=#EFDCF9,bold]  #S #[bg=#170B3B,fg=#69307A]\ue0b4 #[fg=#4c1f5e]\ue0b6#[bg=#4c1f5e,fg=#EFDCF9]  %H:%M "
+set -g status-left-length 60
+set -g status-right ""
+set -g status-right-length 0
+```
+
+*When both now-playing and clock are disabled (macOS only):*
+```tmux
+set -g status-right ""
+set -g status-right-length 0
 ```
 
 *Themed style positional templates* — the exact `status-left`, `status-right`, `status-left-length`, and `status-right-length` values for all four combinations of (now-playing position) × (clock position), when both are enabled. "Base default" (both right) requires no override; the other three are written in full:
@@ -262,7 +276,9 @@ set -g @continuum-save-interval '15'
 
 **Backup:** back up existing `~/.tmux.conf.plugins` to `~/.tmux.conf.plugins.backup.YYYYMMDDHHMMSS` before overwriting.
 
-**Safe default on skip:** when the user skips customisation (`[Nn]` reply or non-interactive) and `~/.tmux.conf.plugins` does not yet exist, `tmux-config.sh` writes it with persistence enabled. If it already exists, it is left untouched.
+**Safe default on skip:** when the user skips customisation (`[Nn]` reply or non-interactive) and `~/.tmux.conf.plugins` does not yet exist, `tmux-config.sh` writes it with persistence enabled (no backup needed — file is new). If it already exists, it is left untouched — no backup, no overwrite.
+
+On the full TUI path (user said Y and completed both stages), `write_plugins_conf()` always backs up any existing `~/.tmux.conf.plugins` and overwrites it with the user's choice.
 
 **Note on plugin unloading:** changing persistence state takes effect on the next tmux server start, not on `source-file` reload. `tmux-config.sh` prints a reminder: `"Restart your tmux server for plugin changes to take effect: tmux kill-server && tmux"`. This reminder is only shown when the persistence choice differs from the current state of `~/.tmux.conf.plugins`.
 
@@ -304,7 +320,12 @@ When fzf is not installed, Stage 1 degrades to a `select` preset menu:
 
 Warning printed: `"fzf not found — install it for per-feature selection (tools-config.sh installs it automatically)"`
 
-For both "Full" and "Minimal" presets, Stage 2 variant menus still run (prefix key, border style, scrollback, copy command are user choices even in fallback mode).
+**Preset key mappings (sets ENABLED[] / DISABLED[] before Stage 2):**
+
+- **Full:** all 9 keys enabled; on Linux `nowplaying` is always excluded (treated as disabled)
+- **Minimal:** enabled = `{mouse, smart_scroll, vim_nav, vi_copy, clipboard, clock}`; disabled = `{nowplaying, border_labels, persistence}`; status bar style variant pre-set to Minimal
+
+For both presets, Stage 2 variant menus still run (prefix key, border style, scrollback, copy command, and any position menus for enabled features are user choices even in fallback mode).
 
 ---
 
