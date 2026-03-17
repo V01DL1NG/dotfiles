@@ -25,7 +25,7 @@ A new standalone script `macos-defaults.sh` applies curated macOS system default
 ./macos-defaults.sh opinionated --dry-run    # opinionated preset, print commands only
 ```
 
-`--dry-run` is accepted as the second positional argument (after an optional preset name) or as the only argument. In `--dry-run` mode, fzf still opens (if interactive) so the user can see exactly what would apply; no `defaults write` or `killall` commands execute.
+`--dry-run` is accepted as the second positional argument (after an optional preset name) or as the only argument. In interactive dry-run mode (no preset given), the preset picker `select` menu runs normally, then fzf opens so the user can see exactly what would apply; no `defaults write` or `killall` commands execute. In preset dry-run mode, fzf does not open; the preset's commands are printed and nothing executes.
 
 The script uses `set -euo pipefail`. All `killall` calls are guarded with `|| true` to prevent exit on already-running services.
 
@@ -235,8 +235,9 @@ Two new checks in the macOS section:
 |---|---|
 | Non-macOS OS | `exit 0` with `info "Skipping macOS defaults (macOS only)"` |
 | `fzf` not installed | Fall back to `select` preset menu (see fzf fallback above) |
-| `--dry-run` (no preset) | fzf opens so the user can review; no `defaults write` or `killall` runs; each command printed to stdout |
-| `--dry-run` (with preset) | fzf does not open; selected preset's commands printed to stdout; nothing executed |
+| `--dry-run` (no preset) | Preset picker runs, then fzf opens; no `defaults write` or `killall` runs; each command printed to stdout |
+| `--dry-run` (with preset) | fzf does not open; preset's commands printed to stdout; nothing executed |
 | No settings selected | `exit 0` with `info "No settings selected — nothing applied"` |
 | `killall` fails | Guarded with `|| true` — failure is silently swallowed; script continues |
+| Safari settings on macOS 13+ | `defaults write` proceeds (silently ignored by OS); warning printed: `"Note: Safari defaults write is ignored on macOS 13+ — enable developer tools in Safari Settings → Advanced."` |
 | `defaults write` silent failure | Not detectable without `sudo` introspection; script proceeds; doctor.sh detects KeyRepeat as a proxy |
