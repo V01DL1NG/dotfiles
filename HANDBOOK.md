@@ -593,6 +593,46 @@ Each `role.sh apply` appends a clearly-marked block to `~/.zshrc`:
 
 ---
 
+## macOS System Defaults
+
+`macos-defaults.sh` applies a curated set of macOS system preferences via `defaults write` — things like fast key repeat, tap-to-click, and sane Finder behaviour. No `sudo` required.
+
+```bash
+./macos-defaults.sh                  # interactive: choose a preset, then fine-tune in fzf
+./macos-defaults.sh minimal          # apply 9 essential settings, no interaction
+./macos-defaults.sh opinionated      # apply all 32 settings, no interaction
+./macos-defaults.sh --dry-run        # preview what would change (nothing written)
+./macos-defaults.sh minimal --dry-run
+```
+
+### Presets
+
+| Preset | Settings | What it covers |
+|--------|----------|----------------|
+| **minimal** | 9 | Fast key repeat, tap-to-click, show file extensions, no `.DS_Store` on network/USB, expanded save/print panels, screenshots to `~/Desktop/Screenshots` |
+| **opinionated** | 32 | Everything in minimal, plus: Dock auto-hide, hidden files, full path in Finder title, 24-hour clock, Safari developer menu, TextEdit plain text, and more |
+
+### Interactive mode
+
+Run with no arguments for the full experience:
+
+1. Pick a starting point — Minimal, Opinionated, or Custom (nothing pre-selected)
+2. An fzf checklist opens with your preset pre-selected — toggle anything on or off with `Space`
+3. Press `Enter` to apply; affected services restart automatically
+
+If fzf isn't installed, you get a plain preset menu instead.
+
+### What gets restarted
+
+Only the services relevant to your selected settings are restarted — Finder, Dock, SystemUIServer, ControlCenter, Safari. Keyboard settings require a logout to take full effect; the script reminds you.
+
+### macOS version notes
+
+- **24-hour clock** — skipped on macOS 13+; configure in System Settings → General → Language & Region instead
+- **Safari settings** — silently ignored on macOS 13+; enable developer tools manually in Safari Settings → Advanced
+
+---
+
 ## doctor.sh
 
 Run `./doctor.sh` from the repo at any time to check your setup:
@@ -611,6 +651,7 @@ Checks and reports (✓ pass / ! warning / ✗ fail):
 - **Git identity** — `user.name` and `user.email` configured
 - **FiraCode Nerd Font** — present in `~/Library/Fonts` or `/Library/Fonts`
 - **iTerm2 profiles** — DynamicProfiles directory and JSON files
+- **macOS defaults** — Screenshots directory exists, KeyRepeat is fast
 - **Active roles** — which roles are currently applied to `~/.zshrc`
 
 Exits with code 1 if any checks fail, so it's safe to use in scripts.
@@ -666,6 +707,7 @@ The container will:
 | Task | Command |
 |------|---------|
 | New Mac setup | `curl -fsSL <bootstrap-url> \| bash` |
+| Apply macOS system defaults | `./macos-defaults.sh` |
 | Check setup health | `./doctor.sh` |
 | Switch shell profile | `./choose-profile.sh` |
 | Apply a role | `./role.sh apply work` |
