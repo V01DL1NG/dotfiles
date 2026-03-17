@@ -399,6 +399,126 @@ fzf_toggle_stage() {
   done
 }
 
+# ── _set_variant_defaults ─────────────────────────────────────────────────────
+_set_variant_defaults() {
+  declare -gA VARIANTS
+  VARIANTS[prefix]="C-a"
+  VARIANTS[border_style]="double"
+  VARIANTS[statusbar_style]="themed"
+  VARIANTS[scrollback]="10000"
+  VARIANTS[copy_cmd]="auto"
+  VARIANTS[clock_pos]="right"
+  VARIANTS[nowplaying_pos]="right"
+}
+
+# ── _resolve_copy_cmd ─────────────────────────────────────────────────────────
+# Resolves "auto" to the platform copy command.
+# Sets VARIANTS[copy_cmd] in place.
+_resolve_copy_cmd() {
+  if [ "${VARIANTS[copy_cmd]}" != "auto" ]; then
+    return
+  fi
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    VARIANTS[copy_cmd]="pbcopy"
+  elif command -v xclip >/dev/null 2>&1; then
+    VARIANTS[copy_cmd]="xclip -selection clipboard"
+  elif command -v xsel >/dev/null 2>&1; then
+    VARIANTS[copy_cmd]="xsel --clipboard --input"
+  else
+    warn "No clipboard tool found (xclip/xsel) — clipboard integration will be skipped"
+    VARIANTS[copy_cmd]=""
+  fi
+}
+
+# ── variant_stage ─────────────────────────────────────────────────────────────
+# Runs Stage 2. Populates VARIANTS{} based on user selections.
+# select loops guard against Ctrl-D with || true.
+variant_stage() {
+  _set_variant_defaults
+
+  # Prefix key
+  local choice
+  PS3="  Prefix key: "
+  select choice in "Ctrl+a (current default)" "Ctrl+b (tmux upstream default)"; do
+    case "$REPLY" in
+      1) VARIANTS[prefix]="C-a"; break ;;
+      2) VARIANTS[prefix]="C-b"; break ;;
+      *) echo "  Enter 1 or 2." ;;
+    esac
+  done || true
+
+  # Pane border style
+  PS3="  Pane border style: "
+  select choice in "Double (current)" "Single" "Heavy"; do
+    case "$REPLY" in
+      1) VARIANTS[border_style]="double"; break ;;
+      2) VARIANTS[border_style]="single"; break ;;
+      3) VARIANTS[border_style]="heavy";  break ;;
+      *) echo "  Enter 1, 2, or 3." ;;
+    esac
+  done || true
+
+  # Status bar style
+  PS3="  Status bar style: "
+  select choice in "Themed velvet (current)" "Minimal (no powerline glyphs)"; do
+    case "$REPLY" in
+      1) VARIANTS[statusbar_style]="themed";  break ;;
+      2) VARIANTS[statusbar_style]="minimal"; break ;;
+      *) echo "  Enter 1 or 2." ;;
+    esac
+  done || true
+
+  # Scrollback buffer
+  PS3="  Scrollback buffer: "
+  select choice in "10,000 lines (current)" "50,000 lines" "Unlimited"; do
+    case "$REPLY" in
+      1) VARIANTS[scrollback]="10000"; break ;;
+      2) VARIANTS[scrollback]="50000"; break ;;
+      3) VARIANTS[scrollback]="0";     break ;;
+      *) echo "  Enter 1, 2, or 3." ;;
+    esac
+  done || true
+
+  # Copy command (only if clipboard enabled)
+  if is_enabled "clipboard"; then
+    PS3="  Copy command: "
+    select choice in "Auto-detect" "pbcopy (macOS)" "xclip (Linux)" "xsel (Linux)"; do
+      case "$REPLY" in
+        1) VARIANTS[copy_cmd]="auto";  break ;;
+        2) VARIANTS[copy_cmd]="pbcopy"; break ;;
+        3) VARIANTS[copy_cmd]="xclip -selection clipboard"; break ;;
+        4) VARIANTS[copy_cmd]="xsel --clipboard --input";   break ;;
+        *) echo "  Enter 1, 2, 3, or 4." ;;
+      esac
+    done || true
+    _resolve_copy_cmd
+  fi
+
+  # Now-playing position (macOS + enabled only)
+  if [ "$DOTFILES_OS" = "macos" ] && is_enabled "nowplaying"; then
+    PS3="  Now-playing position: "
+    select choice in "Right side (current)" "Left side"; do
+      case "$REPLY" in
+        1) VARIANTS[nowplaying_pos]="right"; break ;;
+        2) VARIANTS[nowplaying_pos]="left";  break ;;
+        *) echo "  Enter 1 or 2." ;;
+      esac
+    done || true
+  fi
+
+  # Clock position (only if clock enabled)
+  if is_enabled "clock"; then
+    PS3="  Clock position: "
+    select choice in "Right side (current)" "Left side"; do
+      case "$REPLY" in
+        1) VARIANTS[clock_pos]="right"; break ;;
+        2) VARIANTS[clock_pos]="left";  break ;;
+        *) echo "  Enter 1 or 2." ;;
+      esac
+    done || true
+  fi
+}
+
 # ── Source-only guard (for testing) ──────────────────────────────────────────
 # Set TMUX_CONFIG_SOURCE_ONLY=1 to source this file without executing install logic.
 if [ "${TMUX_CONFIG_SOURCE_ONLY:-}" != "1" ]; then

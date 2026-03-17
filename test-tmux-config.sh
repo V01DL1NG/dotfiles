@@ -212,6 +212,24 @@ is_enabled "mouse"        && pass "minimal preset: mouse enabled"  || fail "mini
 is_enabled "persistence"  && fail "minimal preset: persistence should be disabled" || pass "minimal preset: persistence disabled"
 is_enabled "border_labels" && fail "minimal preset: border_labels should be disabled" || pass "minimal preset: border_labels disabled"
 
+# ── variant_stage defaults ────────────────────────────────────────────────────
+section "variant_stage: defaults"
+
+# When called non-interactively (stdin redirected from /dev/null), select
+# returns immediately. We can't test the interactive menus, but we can
+# verify defaults are set correctly when user presses Enter on each.
+# Instead, test that VARIANTS is populated with sensible defaults by
+# calling _set_variant_defaults directly.
+declare -A VARIANTS=()
+_set_variant_defaults
+[ "${VARIANTS[prefix]:-}" = "C-a" ] && pass "default prefix C-a" || fail "default prefix not C-a: ${VARIANTS[prefix]:-unset}"
+[ "${VARIANTS[border_style]:-}" = "double" ] && pass "default border double" || fail "default border: ${VARIANTS[border_style]:-unset}"
+[ "${VARIANTS[statusbar_style]:-}" = "themed" ] && pass "default statusbar themed" || fail "default statusbar: ${VARIANTS[statusbar_style]:-unset}"
+[ "${VARIANTS[scrollback]:-}" = "10000" ] && pass "default scrollback 10000" || fail "default scrollback: ${VARIANTS[scrollback]:-unset}"
+[ "${VARIANTS[copy_cmd]:-}" = "auto" ] && pass "default copy_cmd auto" || fail "default copy_cmd: ${VARIANTS[copy_cmd]:-unset}"
+[ "${VARIANTS[clock_pos]:-}" = "right" ] && pass "default clock_pos right" || fail "default clock_pos: ${VARIANTS[clock_pos]:-unset}"
+[ "${VARIANTS[nowplaying_pos]:-}" = "right" ] && pass "default nowplaying_pos right" || fail "default nowplaying_pos: ${VARIANTS[nowplaying_pos]:-unset}"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
