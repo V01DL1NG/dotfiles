@@ -68,18 +68,45 @@ else
   fail "opinionated --dry-run: TextEdit plain text missing"
 fi
 
+# ── macOS 13+ version caveat paths ────────────────────────────────────────────
+section "macOS 13+ version caveats"
+
+out="$(dry_run_output opinionated --dry-run)"
+
+# On macOS 13+ (this machine is 15+), 24-hour clock write should be skipped
+if echo "$out" | grep -q "defaults write com.apple.menuextra.clock Show24Hour"; then
+  fail "opinionated --dry-run: 24-hour clock write should be skipped on macOS 13+"
+else
+  pass "opinionated --dry-run: 24-hour clock write correctly absent on macOS 13+"
+fi
+
+# On macOS 13+, Safari warning should be printed
+if echo "$out" | grep -q "Safari defaults write is ignored on macOS 13+"; then
+  pass "opinionated --dry-run: Safari macOS 13+ warning present"
+else
+  fail "opinionated --dry-run: Safari macOS 13+ warning missing"
+fi
+
 # ── Dry-run does not modify system settings ────────────────────────────────────
 section "Dry-run: no actual writes"
 
-# Read KeyRepeat before
-before="$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null || echo 'unset')"
-dry_run_output minimal --dry-run >/dev/null 2>&1 || true
-after="$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null || echo 'unset')"
+# Read two keys before — one from minimal preset, one from opinionated-only
+before_kr="$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null || echo 'unset')"
+before_dock="$(defaults read com.apple.dock autohide 2>/dev/null || echo 'unset')"
+dry_run_output opinionated --dry-run >/dev/null 2>&1 || true
+after_kr="$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null || echo 'unset')"
+after_dock="$(defaults read com.apple.dock autohide 2>/dev/null || echo 'unset')"
 
-if [ "$before" = "$after" ]; then
-  pass "dry-run: KeyRepeat unchanged (before=$before after=$after)"
+if [ "$before_kr" = "$after_kr" ]; then
+  pass "dry-run: KeyRepeat unchanged (before=$before_kr after=$after_kr)"
 else
-  fail "dry-run: KeyRepeat changed! (before=$before after=$after)"
+  fail "dry-run: KeyRepeat changed! (before=$before_kr after=$after_kr)"
+fi
+
+if [ "$before_dock" = "$after_dock" ]; then
+  pass "dry-run: Dock autohide unchanged (before=$before_dock after=$after_dock)"
+else
+  fail "dry-run: Dock autohide changed! (before=$before_dock after=$after_dock)"
 fi
 
 # ── Argument parsing ──────────────────────────────────────────────────────────

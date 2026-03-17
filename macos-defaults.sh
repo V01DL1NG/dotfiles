@@ -282,7 +282,7 @@ apply_one_setting() {
       local _major
       _major="$(_macos_major)"
       if [ "$_major" -ge 13 ]; then
-        warn "Note: Safari defaults write is ignored on macOS 13+ — enable developer tools in Safari Settings → Advanced."
+        warn "Note: Safari defaults write is ignored on macOS 13+ — configure in Safari Settings → General."
       fi
       ;;
 
