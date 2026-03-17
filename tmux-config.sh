@@ -13,7 +13,7 @@ for arg in "$@"; do
   esac
 done
 
-# ── Colors (if not already defined by platform.sh) ───────────────────────────
+# ── Colors ───────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
 PURPLE='\033[38;2;105;48;122m'
 LAVENDER='\033[38;2;239;220;249m'
@@ -41,7 +41,7 @@ run_cmd() {
 # Returns 0 if key is in ENABLED array, 1 otherwise.
 is_enabled() {
   local key="$1" k
-  for k in "${ENABLED[@]:-}"; do
+  for k in "${ENABLED[@]+"${ENABLED[@]}"}"; do
     [ "$k" = "$key" ] && return 0
   done
   return 1
