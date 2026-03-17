@@ -297,9 +297,191 @@ apply_one_setting() {
   esac
 }
 
+# ── restart_services ──────────────────────────────────────────────────────────
+# Restarts only the services affected by selected settings.
+# All killall calls are guarded with || true.
+#
+# NOTE: restart_services() uses raw killall (not run_cmd) intentionally.
+# The spec does not require printing killall commands in --dry-run mode —
+# only defaults write commands are printed. The early-return guard below
+# ensures no killall executes in dry-run. run_cmd() is only for
+# defaults write / mkdir calls (the settings-application side).
+restart_services() {
+  [ "$DRY_RUN" = "true" ] && return
+
+  header "Restarting affected services"
+
+  # Always flush preference daemon
+  killall cfprefsd 2>/dev/null || true
+  success "flushed cfprefsd"
+
+  if [ "$HAS_FINDER" = "true" ]; then
+    killall Finder 2>/dev/null || true
+    success "restarted Finder"
+  fi
+
+  if [ "$HAS_DOCK" = "true" ]; then
+    killall Dock 2>/dev/null || true
+    success "restarted Dock"
+  fi
+
+  if [ "$HAS_SYSTEM_OR_SAFARI" = "true" ]; then
+    # Note: On macOS 13+, Show24Hour is skipped; if it was the only System
+    # setting selected, these restarts are technically unnecessary but harmless.
+    killall SystemUIServer 2>/dev/null || true
+    killall ControlCenter 2>/dev/null || true
+    success "restarted SystemUIServer + ControlCenter"
+  fi
+
+  if [ "$HAS_SAFARI" = "true" ]; then
+    killall Safari 2>/dev/null || true
+    success "restarted Safari"
+  fi
+
+  if [ "$HAS_KEYBOARD" = "true" ]; then
+    echo ""
+    warn "Note: keyboard settings take effect after you log out and back in."
+  fi
+}
+
+# ── apply_list ────────────────────────────────────────────────────────────────
+# Applies an array of setting label strings.
+# Usage: apply_list "${ARRAY[@]}"
+apply_list() {
+  local setting
+  for setting in "$@"; do
+    apply_one_setting "$setting"
+  done
+}
+
+# ── fzf interaction ───────────────────────────────────────────────────────────
+# Requires fzf >= 0.30 for start: event and + action chaining.
+
+# _fzf_pick <bind_string>
+# Opens fzf with the full 32 settings. MINIMAL_SETTINGS listed first so
+# position-based pre-selection binds work. Returns selected lines on stdout.
+_fzf_pick() {
+  local bind_arg="$1"
+  local fzf_args=(
+    --multi
+    --prompt "Settings > "
+    --header "Space/Tab to toggle · Enter to apply · Esc to abort"
+    --height "80%"
+    --reverse
+  )
+  if [ -n "$bind_arg" ]; then
+    fzf_args+=(--bind "$bind_arg")
+  fi
+  printf '%s\n' "${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}" \
+    | fzf "${fzf_args[@]}" || true
+}
+
+# _fzf_minimal_bind
+# Produces the bind string that pre-selects exactly the first N items (N=9).
+# Mechanism: "first+select" selects item 1, then "+down+select" repeats N-1
+# times (via seq 2 N) to select items 2 through N. The %.0s printf trick
+# discards the seq argument and emits the literal string N-1 times.
+_fzf_minimal_bind() {
+  local n="${#MINIMAL_SETTINGS[@]}"
+  # Build: start:first+select+down+select+...  (N-1 additional +down+select)
+  # seq 2 N generates N-1 values; %.0s discards each, emitting "+down+select" N-1 times
+  local bind="start:first+select"
+  bind+="$(printf '+down+select%.0s' $(seq 2 "$n"))"
+  echo "$bind"
+}
+
+# pick_interactive
+# Shows preset picker, then opens fzf (or fallback select).
+# Sets SELECTED_SETTINGS array with the user's choices.
+SELECTED_SETTINGS=()
+
+pick_interactive() {
+  echo ""
+  echo -e "${BOLD}${PURPLE}╔══════════════════════════════════════════════════╗${RESET}"
+  echo -e "${BOLD}${PURPLE}║          macOS System Defaults                   ║${RESET}"
+  echo -e "${BOLD}${PURPLE}╚══════════════════════════════════════════════════╝${RESET}"
+  echo ""
+
+  # ── Preset picker ────────────────────────────────────────────────────────
+  local preset_choice
+  PS3="  Choose a starting point: "
+  select preset_choice in \
+    "Minimal — keyboard feel, tap-to-click, file hygiene, save panels (9 settings)" \
+    "Opinionated — everything (32 settings)" \
+    "Custom — nothing pre-selected"; do
+    case "$REPLY" in
+      1) _pick_with_fzf "minimal"; break ;;
+      2) _pick_with_fzf "opinionated"; break ;;
+      3) _pick_with_fzf "custom"; break ;;
+      *) echo "  Enter 1, 2, or 3." ;;
+    esac
+  done
+}
+
+# _pick_with_fzf <mode>
+# Opens fzf (or fallback) and populates SELECTED_SETTINGS.
+_pick_with_fzf() {
+  local mode="$1"
+
+  if ! command -v fzf >/dev/null 2>&1; then
+    _fallback_no_fzf "$mode"
+    return
+  fi
+
+  local selected
+  case "$mode" in
+    opinionated) selected="$(_fzf_pick "start:select-all")" ;;
+    minimal)     selected="$(_fzf_pick "$(_fzf_minimal_bind)")" ;;
+    custom)      selected="$(_fzf_pick "")" ;;
+  esac
+
+  # Convert newline-separated output to array
+  while IFS= read -r line; do
+    [ -n "$line" ] && SELECTED_SETTINGS+=("$line")
+  done <<< "$selected"
+}
+
+# _fallback_no_fzf <mode>
+# Preset-only fallback when fzf is not installed.
+_fallback_no_fzf() {
+  local mode="$1"
+  warn "fzf not found — install it for per-setting selection (tools-config.sh installs it automatically)"
+  echo ""
+
+  case "$mode" in
+    minimal)
+      SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}")
+      info "Applying minimal preset (9 settings)"
+      ;;
+    opinionated)
+      SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}")
+      info "Applying opinionated preset (32 settings)"
+      ;;
+    custom)
+      # Without fzf, custom mode degrades to a preset-only select menu
+      echo ""
+      local fallback_choice
+      PS3="  Choose a preset: "
+      select fallback_choice in \
+        "Minimal — keyboard feel, tap-to-click, file hygiene, save panels (9 settings)" \
+        "Opinionated — everything (32 settings)" \
+        "Skip — do nothing"; do
+        case "$REPLY" in
+          1) SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}"); break ;;
+          2) SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}"); break ;;
+          3) SELECTED_SETTINGS=(); break ;;
+          *) echo "  Enter 1, 2, or 3." ;;
+        esac
+      done
+      ;;
+  esac
+}
+
 # ── Preset dispatch (non-interactive) ─────────────────────────────────────────
-# When a preset is given on the command line, iterate and apply all settings.
-# Interactive fzf flow and service restarts are handled in main() (Task 3/4).
+# Temporary: applies preset settings for dry-run tests before main() is wired.
+# This block will be removed and replaced by main() in Task 4.
+# NOTE: Task 4 must DELETE this block (not just add main below it),
+# otherwise preset mode will double-apply every setting.
 if [ -n "$PRESET" ]; then
   case "$PRESET" in
     minimal)
