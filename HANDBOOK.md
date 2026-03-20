@@ -728,3 +728,61 @@ The container will:
 | Jump to definition | `gd` (in nvim) |
 | Rename symbol | `Space rn` (in nvim) |
 | See keybindings | Hold `Space` (in nvim) |
+
+---
+
+## TouchID sudo
+
+TouchID authentication for `sudo` in iTerm2 and tmux.
+
+### Setup
+
+```bash
+./touchid-sudo.sh
+```
+
+Test it in a native terminal window and in a new tmux session:
+
+```bash
+sudo echo ok
+```
+
+### How it works
+
+Creates `/etc/pam.d/sudo_local` with:
+- `pam_reattach.so` (`optional`) — reattaches tmux to the correct bootstrap port
+- `pam_tid.so` (`sufficient`) — TouchID auth; falls through to password on failure
+
+Password auth is never blocked. `sudo_local` survives macOS system updates.
+
+### Status
+
+```bash
+./touchid-sudo.sh --status
+```
+
+### Emergency revert — no sudo needed
+
+If sudo breaks for any reason, a root LaunchDaemon watches for a trigger file:
+
+```bash
+touch /tmp/.revert-touchid-sudo
+```
+
+This removes `/etc/pam.d/sudo_local` as root via launchd — no sudo, no osascript, no GUI, no Recovery Mode required. Works headlessly, over SSH, inside tmux.
+
+If nothing happens within 30 seconds:
+
+```bash
+launchctl kickstart system/com.dotfiles.touchid-sudo-revert
+```
+
+Note: `kickstart` requires admin group membership and may prompt for a password in a GUI session. If unavailable (headless/SSH), reboot — the daemon reloads and a fresh `touch /tmp/.revert-touchid-sudo` will trigger it.
+
+### Clean uninstall
+
+```bash
+./touchid-sudo.sh --revert
+```
+
+Removes `sudo_local` and the LaunchDaemon. Requires working sudo.

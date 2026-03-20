@@ -178,6 +178,7 @@ syntax_check choose-profile.sh
 syntax_check doctor.sh
 syntax_check bootstrap-server.sh
 syntax_check macos-defaults.sh
+syntax_check touchid-sudo.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
@@ -209,6 +210,18 @@ if bash "$SCRIPT_DIR/test-tmux-config.sh" >/dev/null 2>&1; then
   pass "test-tmux-config.sh passed"
 else
   fail "test-tmux-config.sh — one or more checks failed (run ./test-tmux-config.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
+section "TouchID sudo — test-touchid-sudo.sh"
+# ════════════════════════════════════════════════
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  warn "test-touchid-sudo.sh skipped (macOS only)"
+elif bash "$SCRIPT_DIR/test-touchid-sudo.sh" >/dev/null 2>&1; then
+  pass "test-touchid-sudo.sh passed"
+else
+  fail "test-touchid-sudo.sh — one or more checks failed (run ./test-touchid-sudo.sh for details)"
 fi
 
 # ════════════════════════════════════════════════
