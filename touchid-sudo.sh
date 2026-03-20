@@ -209,6 +209,7 @@ cmd_install() {
   fi
 
   sudo cp "$tmp_pam" "$PAM_SUDO_LOCAL"
+  sudo chmod 644 "$PAM_SUDO_LOCAL"
   rm -f "$tmp_pam"
 
   # Step 6: verify post-copy content
