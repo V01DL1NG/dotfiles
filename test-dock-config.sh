@@ -74,6 +74,32 @@ fi
 
 rm -rf "$FIXTURE_DIR"
 
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+section "Arg parsing"
+
+# --apply with missing config exits 0 (skip, not error)
+EMPTY_DIR="$(mktemp -d)"
+if DOCK_CONFIG_DIR="$EMPTY_DIR" bash "$SCRIPT_DIR/dock-config.sh" --apply work >/dev/null 2>&1; then
+  pass "--apply work with missing config exits 0"
+else
+  fail "--apply work with missing config should exit 0"
+fi
+rm -rf "$EMPTY_DIR"
+
+# Invalid args exit non-zero
+if ! bash "$SCRIPT_DIR/dock-config.sh" --invalid-flag >/dev/null 2>&1; then
+  pass "invalid flag exits non-zero"
+else
+  fail "invalid flag should exit non-zero"
+fi
+
+# --dry-run exits 0 in non-interactive mode (no stdin)
+if bash "$SCRIPT_DIR/dock-config.sh" --dry-run </dev/null >/dev/null 2>&1; then
+  pass "--dry-run exits 0"
+else
+  fail "--dry-run should exit 0"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
