@@ -31,3 +31,4 @@ atuin.key
 
 # Logs
 *.log
+.worktrees/
