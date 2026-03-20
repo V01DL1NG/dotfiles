@@ -95,7 +95,9 @@ apply_dock_config() {
     exit 0
   fi
 
-  install_dockutil
+  if [ "$DRY_RUN" = "false" ]; then
+    install_dockutil
+  fi
 
   # Read position and clear from metadata comment headers
   local position="bottom"

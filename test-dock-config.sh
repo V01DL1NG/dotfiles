@@ -29,6 +29,7 @@ section "dry-run output"
 
 # Build a fixture config dir with a known config
 FIXTURE_DIR="$(mktemp -d)"
+trap 'rm -rf "$FIXTURE_DIR"' EXIT
 cat > "$FIXTURE_DIR/work.txt" <<'EOF'
 # dock-position: left
 # dock-clear: yes
