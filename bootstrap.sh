@@ -7,13 +7,6 @@
 #   REPO_URL=https://github.com/you/dotfiles.git bash bootstrap.sh
 # ============================================================================
 
-# ── TTY redirect (must come before set -euo pipefail) ────────────────────────
-# When piped from curl, stdin is the script itself. Redirect stdin from the
-# terminal so interactive prompts work correctly.
-if [ ! -t 0 ]; then
-  exec </dev/tty
-fi
-
 set -euo pipefail
 
 # ── Env-overridable config ────────────────────────────────────────────────────
@@ -165,6 +158,13 @@ print_next_steps() {
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 main() {
+  # Redirect stdin from the terminal so interactive prompts work when piped
+  # from curl. Must run AFTER all function definitions are read from the pipe —
+  # placing exec </dev/tty at top level causes bash to stop reading the script.
+  if [ ! -t 0 ]; then
+    exec </dev/tty
+  fi
+
   check_macos
   check_xcode_clt
   install_homebrew
