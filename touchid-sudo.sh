@@ -175,6 +175,11 @@ cmd_install() {
     local tmp_plist
     tmp_plist="$(mktemp)"
     plist_content > "$tmp_plist"
+    if ! plutil -lint "$tmp_plist" >/dev/null 2>&1; then
+      rm -f "$tmp_plist"
+      error "LaunchDaemon plist failed validation — aborting"
+      exit 1
+    fi
     sudo cp "$tmp_plist" "$DAEMON_PLIST"
     rm -f "$tmp_plist"
     sudo chown root:wheel "$DAEMON_PLIST"
