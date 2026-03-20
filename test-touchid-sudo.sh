@@ -66,6 +66,30 @@ else
   fail "dry-run: pam_reattach path should contain brew --prefix"
 fi
 
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+section "Arg parsing"
+
+# Invalid arg should exit non-zero
+if ! bash "$SCRIPT_DIR/touchid-sudo.sh" --invalid-flag >/dev/null 2>&1; then
+  pass "invalid flag exits non-zero"
+else
+  fail "invalid flag should exit non-zero"
+fi
+
+# --status exits 0 even when not installed
+if bash "$SCRIPT_DIR/touchid-sudo.sh" --status >/dev/null 2>&1; then
+  pass "--status exits 0"
+else
+  fail "--status should exit 0"
+fi
+
+# --dry-run exits 0
+if bash "$SCRIPT_DIR/touchid-sudo.sh" --dry-run >/dev/null 2>&1; then
+  pass "--dry-run exits 0"
+else
+  fail "--dry-run should exit 0"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
