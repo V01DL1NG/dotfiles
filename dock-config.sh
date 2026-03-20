@@ -69,9 +69,82 @@ if [ "$DOTFILES_OS" != "macos" ]; then
   exit 0
 fi
 
-# ── Stubs ─────────────────────────────────────────────────────────────────────
-install_dockutil() { echo "install_dockutil: not yet implemented"; }
-apply_dock_config() { echo "apply_dock_config: not yet implemented"; }
+# ── install_dockutil ──────────────────────────────────────────────────────────
+# Ensures dockutil is available; installs via brew if missing.
+install_dockutil() {
+  if command -v dockutil >/dev/null 2>&1; then
+    return
+  fi
+  info "Installing dockutil via Homebrew..."
+  brew install dockutil
+  if ! command -v dockutil >/dev/null 2>&1; then
+    echo "dockutil not found after install — aborting" >&2
+    exit 1
+  fi
+}
+
+# ── apply_dock_config <role> ──────────────────────────────────────────────────
+# Reads dock/<role>.txt and applies it via dockutil.
+# Reads metadata comment headers for position and clear settings.
+apply_dock_config() {
+  local role="$1"
+  local config_file="${DOCK_CONFIG_DIR}/${role}.txt"
+
+  if [ ! -f "$config_file" ]; then
+    warn "No Dock config for role '${role}' — skipping"
+    exit 0
+  fi
+
+  install_dockutil
+
+  # Read position and clear from metadata comment headers
+  local position="bottom"
+  local clear_flag="yes"
+  while IFS= read -r line; do
+    case "$line" in
+      "# dock-position: "*) position="${line#\# dock-position: }" ;;
+      "# dock-clear: "*)    clear_flag="${line#\# dock-clear: }" ;;
+    esac
+  done < "$config_file"
+
+  # Set Dock position (dockutil has no position flag — use defaults write)
+  run_cmd defaults write com.apple.dock orientation -string "$position"
+
+  # Clear existing Dock
+  if [ "$clear_flag" = "yes" ]; then
+    run_cmd dockutil --remove all --no-restart
+  fi
+
+  # Add apps and spacers from config
+  while IFS= read -r line; do
+    # Strip leading/trailing whitespace
+    local trimmed
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+
+    # Skip blank lines and comment lines
+    [ -z "$trimmed" ] && continue
+    case "$trimmed" in \#*) continue ;; esac
+
+    if [ "$trimmed" = "---" ]; then
+      run_cmd dockutil --add '' --type spacer --section apps --no-restart
+    else
+      if [ "$DRY_RUN" = "false" ] && [ ! -e "$trimmed" ]; then
+        warn "Skipping missing app: $trimmed"
+        continue
+      fi
+      run_cmd dockutil --add "$trimmed" --no-restart
+    fi
+  done < "$config_file"
+
+  run_cmd killall Dock
+
+  if [ "$DRY_RUN" = "false" ]; then
+    success "Dock configured for role '${role}'"
+  fi
+}
+
+# ── dock_customise (stub — implemented in Task 5) ─────────────────────────────
 dock_customise()  { echo "dock_customise: not yet implemented"; }
 
 # ── Source-only guard (for testing) ──────────────────────────────────────────

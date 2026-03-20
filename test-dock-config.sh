@@ -24,6 +24,55 @@ else
   fail "bash -n dock-config.sh — syntax error"
 fi
 
+# ── dry-run output ────────────────────────────────────────────────────────────
+section "dry-run output"
+
+# Build a fixture config dir with a known config
+FIXTURE_DIR="$(mktemp -d)"
+cat > "$FIXTURE_DIR/work.txt" <<'EOF'
+# dock-position: left
+# dock-clear: yes
+/Applications/Finder.app
+---
+/Applications/Arc.app
+EOF
+
+dry_out() {
+  DOCK_CONFIG_DIR="$FIXTURE_DIR" \
+    bash "$SCRIPT_DIR/dock-config.sh" --apply work --dry-run 2>&1 || true
+}
+out="$(dry_out)"
+
+# dockutil --remove all must appear
+if echo "$out" | grep -q "dockutil --remove all"; then
+  pass "dry-run: dockutil --remove all appears"
+else
+  fail "dry-run: dockutil --remove all missing"
+fi
+
+# /Applications/Finder.app must appear
+if echo "$out" | grep -q "/Applications/Finder.app"; then
+  pass "dry-run: /Applications/Finder.app appears"
+else
+  fail "dry-run: /Applications/Finder.app missing from output"
+fi
+
+# spacer command must appear (from --- line in fixture)
+if echo "$out" | grep -q "type spacer"; then
+  pass "dry-run: spacer command (--type spacer) appears"
+else
+  fail "dry-run: spacer command missing"
+fi
+
+# killall Dock must appear
+if echo "$out" | grep -q "killall Dock"; then
+  pass "dry-run: killall Dock appears"
+else
+  fail "dry-run: killall Dock missing"
+fi
+
+rm -rf "$FIXTURE_DIR"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
