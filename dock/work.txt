@@ -1,0 +1,5 @@
+/Applications/Finder.app
+/System/Applications/Mail.app
+/Applications/Arc.app
+---
+/Applications/Slack.app

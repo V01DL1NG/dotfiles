@@ -1,0 +1,5 @@
+/Applications/Finder.app
+/Applications/Arc.app
+/Applications/Safari.app
+---
+/System/Applications/Music.app
