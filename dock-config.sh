@@ -28,7 +28,7 @@ while [ $# -gt 0 ]; do
     --apply)
       MODE="apply"
       APPLY_ROLE="${2:-}"
-      if [ -z "$APPLY_ROLE" ]; then
+      if [ -z "$APPLY_ROLE" ] || [[ "$APPLY_ROLE" == --* ]]; then
         echo "Usage: $0 --apply <work|personal>" >&2
         exit 1
       fi
