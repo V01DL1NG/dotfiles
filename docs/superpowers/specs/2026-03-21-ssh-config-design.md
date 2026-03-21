@@ -197,7 +197,6 @@ macOS-only (same guard pattern as `test-touchid-sudo.sh`, `test-dock-config.sh`)
 Tests source the script with `SSH_CONFIG_SOURCE_ONLY=1`, set `AUTH_METHOD`, `ENABLED[]`, `DISABLED[]`, and `VARIANTS[]` directly, then call `generate_ssh_config` and assert on its output. No interactive TUI is invoked. Example:
 
 ```bash
-TMUX_CONFIG_SOURCE_ONLY=1  # wrong — use SSH_CONFIG_SOURCE_ONLY
 SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
 AUTH_METHOD="1password"
 ENABLED=(multiplexing hash_known_hosts)
@@ -258,4 +257,4 @@ Replace the existing minimal SSH section with:
 | 1Password socket missing at `--status` | `warn` (not error — app might just be closed) |
 | `~/.ssh/config` is regular file | Backed up before symlink |
 | Running non-interactively (no TTY) | Skip TUI, print skip message, exit 0 |
-| `--dry-run` in non-interactive | Show dry-run output, exit 0 |
+| `--dry-run` in non-interactive | Show dry-run output, exit 0 — `--dry-run` check fires before the TTY guard, so non-interactive dry-run always produces output (same pattern as `tmux-config.sh`) |
