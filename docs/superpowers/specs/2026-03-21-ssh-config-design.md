@@ -39,9 +39,9 @@ Upgrade `ssh-config.sh` from a minimal symlink-installer into a full interactive
 
 Follows `tmux-config.sh` / `dock-config.sh`:
 - `set -euo pipefail`
-- `run_cmd()` dry-run wrapper — prints `[dry-run] <cmd>` instead of executing
-- `SSH_CONFIG_SOURCE_ONLY=1` source-only guard (macOS only — Linux exits at macOS guard)
-- Color helpers: `info`, `success`, `warn`, `header`
+- `run_cmd()` dry-run wrapper — prints `[dry-run] <cmd>` instead of executing shell commands (mkdir, chmod, ln, ssh-keygen). Config content generation uses a string-buffer approach (like `write_local_conf` in `tmux-config.sh`): content is built in a variable and either printed (dry-run) or written to disk.
+- `SSH_CONFIG_SOURCE_ONLY=1` source-only guard (macOS only — Linux exits at macOS guard before reaching the guard)
+- Color helpers: `info`, `success`, `warn`, `error`, `header`
 - `--dry-run` flag: shows generated `ssh_config` content + keygen command, no writes
 - `--status` flag: diagnostic mode, no writes
 
@@ -88,7 +88,8 @@ Sets `ENABLED[]`, `DISABLED[]`, `VARIANTS[keepalive]`, `VARIANTS[control_persist
 
 **Skipped entirely** if:
 - `AUTH_METHOD = 1password` (no key files needed), OR
-- Key already exists at the chosen path (reports existing key, moves on)
+- Key already exists at the chosen path (reports existing key, moves on), OR
+- Running non-interactively (no TTY) — the `[ -t 0 ]` guard in the main dispatch fires before Stage 1, so Stage 3 is never reached in non-interactive mode
 
 **Wizard prompts** (`select` + `read`):
 1. Key name — default `id_ed25519`; `read -r -p` prompt, empty = use default
@@ -102,17 +103,19 @@ Sets `KEYGEN_PATH`, `KEYGEN_TYPE`, `KEYGEN_COMMENT`, `KEYGEN_PASSPHRASE` ∈ {`y
 
 ### Stage 4 — Write + apply
 
-1. Generate `ssh_config` content (see Generated Config Format below)
-2. Ensure `~/.ssh/` exists with `700` permissions
-3. Ensure `~/.ssh/sockets/` exists
-4. Back up existing `~/.ssh/config` if it is a regular file (not symlink)
-5. Write generated content to `ssh_config` in repo
-6. Symlink `~/.ssh/config` → `ssh_config`
-7. `chmod 600 ssh_config`
-8. If key generation requested: run `ssh-keygen` with chosen options
-9. Print `--status`-style summary
+A `generate_ssh_config` function builds the full config content as a string from `AUTH_METHOD`, `ENABLED[]`, `DISABLED[]`, `VARIANTS[]`, and `KEYGEN_PATH` (if set). This function is the testable unit: tests source the script with `SSH_CONFIG_SOURCE_ONLY=1`, set these variables directly, call `generate_ssh_config`, and assert on its output — no interactive TUI required.
 
-All file writes go through `run_cmd()` for dry-run support. `ssh-keygen` is only called when `DRY_RUN=false`; in dry-run mode the command is printed.
+Steps:
+1. Call `generate_ssh_config` → store in `SSH_CONF_OUT` variable
+2. In dry-run: print content between separator lines; print keygen command if applicable; return
+3. Ensure `~/.ssh/` exists with `700` permissions (`run_cmd mkdir -p` + `run_cmd chmod`)
+4. Ensure `~/.ssh/sockets/` exists (`run_cmd mkdir -p`)
+5. Back up existing `~/.ssh/config` if it is a regular file (not symlink)
+6. Write `SSH_CONF_OUT` to `ssh_config` in repo via `printf '%s\n' "$SSH_CONF_OUT" > "$SSH_CONFIG_FILE"`
+7. Symlink `~/.ssh/config` → `ssh_config` (`run_cmd ln -sf`)
+8. `chmod 600` on the repo file (not the symlink): `chmod 600 "$SCRIPT_DIR/ssh_config"`
+9. If key generation requested and `DRY_RUN=false`: run `ssh-keygen` with chosen options
+10. Print `--status`-style summary
 
 ---
 
@@ -191,7 +194,19 @@ macOS-only (same guard pattern as `test-touchid-sudo.sh`, `test-dock-config.sh`)
 
 ### dry-run output checks
 
-For each auth method, set `SSH_CONFIG_SOURCE_ONLY` and run `--dry-run` non-interactively with pre-set variables, asserting output contains expected strings:
+Tests source the script with `SSH_CONFIG_SOURCE_ONLY=1`, set `AUTH_METHOD`, `ENABLED[]`, `DISABLED[]`, and `VARIANTS[]` directly, then call `generate_ssh_config` and assert on its output. No interactive TUI is invoked. Example:
+
+```bash
+TMUX_CONFIG_SOURCE_ONLY=1  # wrong — use SSH_CONFIG_SOURCE_ONLY
+SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
+AUTH_METHOD="1password"
+ENABLED=(multiplexing hash_known_hosts)
+DISABLED=()
+VARIANTS=([keepalive]="60" [control_persist]="600")
+out="$(generate_ssh_config)"
+```
+
+For each auth method, assert output contains expected strings:
 
 | Check | Expected substring |
 |---|---|
