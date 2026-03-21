@@ -146,8 +146,182 @@ apply_dock_config() {
   fi
 }
 
-# ── dock_customise (stub — implemented in Task 5) ─────────────────────────────
-dock_customise()  { echo "dock_customise: not yet implemented"; }
+# ── scan_apps ─────────────────────────────────────────────────────────────────
+# Prints all .app paths found in /Applications and ~/Applications, one per line.
+scan_apps() {
+  local app
+  for dir in "/Applications" "$HOME/Applications"; do
+    [ -d "$dir" ] || continue
+    for app in "$dir"/*.app; do
+      [ -e "$app" ] && echo "$app"
+    done
+  done | sort -u
+}
+
+# ── fzf_app_picker <role> ─────────────────────────────────────────────────────
+# Runs Stage 2. Sets SELECTED_APPS[] array.
+# Uses fzf if available; falls back to numbered list + space-separated input.
+# Note: fzf --multi returns items in input-list order, not selection order.
+fzf_app_picker() {
+  local role="$1"
+  SELECTED_APPS=()
+
+  local -a app_list
+  mapfile -t app_list < <(scan_apps)
+
+  if [ ${#app_list[@]} -eq 0 ]; then
+    warn "No .app bundles found in /Applications or ~/Applications"
+    return 1
+  fi
+
+  if ! command -v fzf >/dev/null 2>&1; then
+    warn "fzf not found — using numbered list fallback"
+    echo ""
+    echo "  Installed apps:"
+    local i=1
+    for app in "${app_list[@]}"; do
+      echo "  $i) $(basename "$app" .app)"
+      (( i++ ))
+    done
+    echo ""
+    echo "  Enter app numbers separated by spaces (e.g. 1 3 5):"
+    read -r -p "  > " choices
+    for idx in $choices; do
+      if [[ "$idx" =~ ^[0-9]+$ ]] && (( idx >= 1 && idx <= ${#app_list[@]} )); then
+        SELECTED_APPS+=("${app_list[$((idx - 1))]}")
+      fi
+    done
+    return 0
+  fi
+
+  local selected
+  selected="$(
+    { echo "--- SPACER ---"; printf '%s\n' "${app_list[@]}"; } \
+      | fzf --multi \
+            --prompt "Select apps for ${role} Dock > " \
+            --header "Space to select · Enter to confirm · fzf order = input order (edit file to reorder)" \
+            --height "80%" \
+            --reverse \
+      || true
+  )"
+
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    SELECTED_APPS+=("$line")
+  done <<< "$selected"
+}
+
+# ── dock_variant_stage ────────────────────────────────────────────────────────
+# Runs Stage 3. Sets DOCK_POSITION and DOCK_CLEAR.
+dock_variant_stage() {
+  DOCK_POSITION="bottom"
+  DOCK_CLEAR="yes"
+
+  local choice
+
+  # Dock position
+  PS3="  Dock position: "
+  select choice in "Bottom (default)" "Left" "Right"; do
+    case "$REPLY" in
+      1) DOCK_POSITION="bottom"; break ;;
+      2) DOCK_POSITION="left";   break ;;
+      3) DOCK_POSITION="right";  break ;;
+      *) echo "  Enter 1, 2, or 3." ;;
+    esac
+  done || true
+
+  # Clear existing Dock before applying
+  PS3="  Clear existing Dock before applying? "
+  select choice in "Yes (default)" "No"; do
+    case "$REPLY" in
+      1) DOCK_CLEAR="yes"; break ;;
+      2) DOCK_CLEAR="no";  break ;;
+      *) echo "  Enter 1 or 2." ;;
+    esac
+  done || true
+}
+
+# ── save_dock_config <role> ───────────────────────────────────────────────────
+# Writes dock/<role>.txt from SELECTED_APPS[], DOCK_POSITION, DOCK_CLEAR.
+save_dock_config() {
+  local role="$1"
+  local config_file="${DOCK_CONFIG_DIR}/${role}.txt"
+  local content=""
+
+  content+="# dock-position: ${DOCK_POSITION}"$'\n'
+  content+="# dock-clear: ${DOCK_CLEAR}"$'\n'
+
+  for entry in "${SELECTED_APPS[@]}"; do
+    if [ "$entry" = "--- SPACER ---" ]; then
+      content+="---"$'\n'
+    else
+      content+="${entry}"$'\n'
+    fi
+  done
+
+  if [ "$DRY_RUN" = "true" ]; then
+    echo ""
+    info "Would write to: ${config_file}"
+    echo "────────────────────────────────────────────"
+    printf '%s' "$content"
+    echo "────────────────────────────────────────────"
+    return
+  fi
+
+  mkdir -p "$(dirname "$config_file")"
+  printf '%s' "$content" > "$config_file"
+  success "Saved config: ${config_file}"
+}
+
+# ── dock_customise_role <role> ────────────────────────────────────────────────
+# Runs the full TUI for one role: picker → variants → save → apply.
+dock_customise_role() {
+  local role="$1"
+  header "Dock — ${role}"
+
+  # Stage 2: app picker
+  fzf_app_picker "$role" || {
+    warn "No apps found — skipping ${role} Dock config."
+    return
+  }
+
+  if [ ${#SELECTED_APPS[@]} -eq 0 ]; then
+    warn "No apps selected — skipping ${role} Dock config."
+    return
+  fi
+
+  # Stage 3: variant choices
+  dock_variant_stage
+
+  # Save config
+  save_dock_config "$role"
+
+  # Apply immediately
+  apply_dock_config "$role"
+
+  echo ""
+  info "Tip: edit ${DOCK_CONFIG_DIR}/${role}.txt to reorder apps (fzf preserves input order, not selection order)"
+}
+
+# ── dock_customise ────────────────────────────────────────────────────────────
+# Orchestrates Stage 1 (role select) → dock_customise_role.
+dock_customise() {
+  header "Dock Customisation"
+
+  local choice
+  PS3="  Which role to configure? "
+  select choice in "Work" "Personal" "Both"; do
+    case "$REPLY" in
+      1) dock_customise_role "work";                               break ;;
+      2) dock_customise_role "personal";                           break ;;
+      3) dock_customise_role "work"; dock_customise_role "personal"; break ;;
+      *) echo "  Enter 1, 2, or 3." ;;
+    esac
+  done || true
+
+  echo ""
+  success "Dock customisation complete."
+}
 
 # ── Source-only guard (for testing) ──────────────────────────────────────────
 if [ "${DOCK_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
