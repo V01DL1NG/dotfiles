@@ -296,8 +296,10 @@ dock_customise_role() {
   # Save config
   save_dock_config "$role"
 
-  # Apply immediately
-  apply_dock_config "$role"
+  # Apply immediately (skipped in dry-run — save_dock_config already previewed the config)
+  if [ "$DRY_RUN" = "false" ]; then
+    apply_dock_config "$role"
+  fi
 
   echo ""
   info "Tip: edit ${DOCK_CONFIG_DIR}/${role}.txt to reorder apps (fzf preserves input order, not selection order)"
