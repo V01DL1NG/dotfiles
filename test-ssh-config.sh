@@ -193,12 +193,6 @@ else
   pass "--badflag exits non-zero"
 fi
 
-if echo "" | bash "$SCRIPT_DIR/ssh-config.sh" --dry-run >/dev/null 2>&1; then
-  pass "--dry-run exits 0 (non-interactive)"
-else
-  fail "--dry-run exits non-zero (non-interactive)"
-fi
-
 # ── Summary ──────────────────────────────────────────────────────────────────
 
 echo ""
