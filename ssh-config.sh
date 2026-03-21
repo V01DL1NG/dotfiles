@@ -1,41 +1,70 @@
 #!/usr/bin/env bash
+# ssh-config.sh — SSH configuration TUI (macOS only)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SSH_DIR="$HOME/.ssh"
-SSH_CONFIG="$SSH_DIR/config"
-BACKUP="$SSH_CONFIG.backup.$(date +%Y%m%d%H%M%S)"
+SSH_CONFIG_FILE="$SCRIPT_DIR/ssh_config"
+DRY_RUN=false
 
-# Create .ssh directory with correct permissions
-mkdir -p "$SSH_DIR"
-chmod 700 "$SSH_DIR"
-
-# Create sockets directory for ControlMaster
-mkdir -p "$SSH_DIR/sockets"
-
-# Back up existing config if it's a regular file (not already a symlink)
-if [ -f "$SSH_CONFIG" ] && [ ! -L "$SSH_CONFIG" ]; then
-  echo "Backing up $SSH_CONFIG to $BACKUP"
-  cp "$SSH_CONFIG" "$BACKUP"
+# ── macOS guard ───────────────────────────────────────────────────────────────
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "  ssh-config.sh: skipped (macOS only)"
+  exit 0
 fi
 
-# Symlink config into place (chmod target so SSH accepts it)
-echo "Linking ssh_config → $SSH_CONFIG"
-ln -sf "$SCRIPT_DIR/ssh_config" "$SSH_CONFIG"
-chmod 600 "$SCRIPT_DIR/ssh_config"
+# ── Platform ──────────────────────────────────────────────────────────────────
+# shellcheck source=platform.sh
+source "$SCRIPT_DIR/platform.sh"
 
-# Generate ed25519 key if none exists
-if [ ! -f "$SSH_DIR/id_ed25519" ]; then
+# ── Colors ────────────────────────────────────────────────────────────────────
+BOLD='\033[1m'
+DIM='\033[2m'
+PURPLE='\033[38;2;105;48;122m'
+LAVENDER='\033[38;2;239;220;249m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+info()    { echo -e "  ${LAVENDER}${1}${RESET}"; }
+success() { echo -e "  ${GREEN}✓${RESET}  ${1}"; }
+warn()    { echo -e "  ${YELLOW}!${RESET}  ${1}"; }
+error()   { echo -e "  ${RED}✗${RESET}  ${1}" >&2; }
+header()  { echo -e "\n${BOLD}${PURPLE}${1}${RESET}"; }
+
+# ── run_cmd ───────────────────────────────────────────────────────────────────
+run_cmd() {
+  if [ "$DRY_RUN" = "true" ]; then
+    echo "  [dry-run] $*"
+  else
+    "$@"
+  fi
+}
+
+# ── generate_ssh_config ───────────────────────────────────────────────────────
+# Builds full ssh_config content as a string from globals:
+#   AUTH_METHOD        — "1password" | "file" | "fallback"
+#   ENABLED[]          — array of enabled feature keys
+#   DISABLED[]         — array of disabled feature keys
+#   VARIANTS[]         — associative array: keepalive=<N|"no">, control_persist=<N|"yes">
+#   KEYGEN_PATH        — (optional) path to key file for IdentityFile
+generate_ssh_config() {
+  # stub — implemented in subsequent tasks
   echo ""
-  echo "No SSH key found. Generate one with:"
-  echo "  ssh-keygen -t ed25519 -C \"your_email@example.com\""
-else
-  echo "SSH key found: $SSH_DIR/id_ed25519"
+}
+
+# ── Source-only guard (for testing) ──────────────────────────────────────────
+# Set SSH_CONFIG_SOURCE_ONLY=1 to source this file without running install logic.
+if [ "${SSH_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
+  return 0 2>/dev/null || exit 0
 fi
 
-echo ""
-echo "Done. Features enabled:"
-echo "  - macOS Keychain integration"
-echo "  - Connection keepalive (60s interval)"
-echo "  - Connection multiplexing (reuse connections)"
-echo "  - Add host aliases in ~/.ssh/config"
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+case "${1:-}" in
+  --dry-run) DRY_RUN=true ;;
+  --status)  : ;;
+  "")        : ;;
+  *) error "Unknown flag: ${1}"; echo "Usage: ./ssh-config.sh [--status|--dry-run]" >&2; exit 1 ;;
+esac
+
+echo "ssh-config.sh: not yet implemented"
