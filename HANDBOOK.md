@@ -786,3 +786,53 @@ Note: `kickstart` requires admin group membership and may prompt for a password 
 ```
 
 Removes `sudo_local` and the LaunchDaemon. Requires working sudo.
+
+---
+
+## Dock Configuration
+
+Role-aware Dock layout manager. Saves layouts to `dock/work.txt` and
+`dock/personal.txt` in the repo. Automatically applied when running
+`role.sh apply`.
+
+### First-time setup — interactive TUI
+
+```bash
+./dock-config.sh
+```
+
+1. Choose a role (Work / Personal / Both)
+2. Use fzf to select apps and spacers (`--- SPACER ---`) in any order
+3. Choose Dock position and whether to clear the existing Dock
+4. Config is saved and applied immediately
+
+**Note:** fzf returns items in input-list order, not selection order.
+To reorder apps, edit the config file directly after the TUI run.
+
+### Apply a saved config
+
+```bash
+./dock-config.sh --apply work
+./dock-config.sh --apply personal
+```
+
+Called automatically by `role.sh apply work` / `role.sh apply personal`.
+
+### Config files
+
+```
+dock/work.txt
+dock/personal.txt
+```
+
+Format — one entry per line:
+- App path: `/Applications/Arc.app`
+- Spacer:   `---`
+- Metadata: `# dock-position: left` / `# dock-clear: yes`
+- Comments (`#`) and blank lines are ignored
+
+### Preview without changes
+
+```bash
+./dock-config.sh --apply work --dry-run
+```

@@ -179,6 +179,7 @@ syntax_check doctor.sh
 syntax_check bootstrap-server.sh
 syntax_check macos-defaults.sh
 syntax_check touchid-sudo.sh
+syntax_check dock-config.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
@@ -222,6 +223,18 @@ elif bash "$SCRIPT_DIR/test-touchid-sudo.sh" >/dev/null 2>&1; then
   pass "test-touchid-sudo.sh passed"
 else
   fail "test-touchid-sudo.sh — one or more checks failed (run ./test-touchid-sudo.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
+section "Dock Config — test-dock-config.sh"
+# ════════════════════════════════════════════════
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  warn "test-dock-config.sh skipped (macOS only)"
+elif bash "$SCRIPT_DIR/test-dock-config.sh" >/dev/null 2>&1; then
+  pass "test-dock-config.sh passed"
+else
+  fail "test-dock-config.sh — one or more checks failed (run ./test-dock-config.sh for details)"
 fi
 
 # ════════════════════════════════════════════════
