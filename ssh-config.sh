@@ -190,12 +190,120 @@ stage_keygen() { KEYGEN_PATH=""; }
 stage_write()  { info "Write stage not yet implemented"; }
 
 main() {
+  # ── Non-interactive guard ─────────────────────────────────────────────────
   if [ ! -t 0 ] && [ "$DRY_RUN" = "false" ]; then
     info "No TTY detected — skipping interactive TUI"
     exit 0
   fi
-  info "SSH config TUI — stages coming soon"
+
+  # ── Non-interactive dry-run: skip TUI, use defaults, show output ──────────
+  # --dry-run bypasses the TTY guard above but select menus need a terminal.
+  # When stdin is not a TTY and DRY_RUN=true, set defaults and skip to write.
+  if [ ! -t 0 ] && [ "$DRY_RUN" = "true" ]; then
+    AUTH_METHOD="fallback"
+    ENABLED=(multiplexing hash_known_hosts)
+    DISABLED=()
+    declare -A VARIANTS=([keepalive]="60" [control_persist]="600")
+    KEYGEN_PATH=""
+    stage_write
+    return
+  fi
+
+  header "SSH Configuration"
+
+  # ── Stage 1 — Auth method ─────────────────────────────────────────────────
+  header "Stage 1 — Auth method"
+  echo ""
+  info "How should SSH authenticate?"
+  echo ""
+
+  local PS3="  Choose auth method: "
+  select choice in \
+    "1Password agent only" \
+    "File-based keys only" \
+    "1Password with file-based fallback (recommended)"; do
+    case "$REPLY" in
+      1) AUTH_METHOD="1password"; break ;;
+      2) AUTH_METHOD="file";      break ;;
+      3) AUTH_METHOD="fallback";  break ;;
+      *) warn "Invalid choice — enter 1, 2, or 3" ;;
+    esac
+  done
+
+  success "Auth method: ${AUTH_METHOD}"
+
+  # ── Stage 2 — Connection settings ─────────────────────────────────────────
+  header "Stage 2 — Connection settings"
+  echo ""
+
+  ENABLED=()
+  DISABLED=()
+  declare -A VARIANTS=()
+
+  # Feature toggles: fzf multi-select or fallback to all-on preset
+  if command -v fzf >/dev/null 2>&1; then
+    info "Use Space to toggle, Enter to confirm"
+    echo ""
+    local selected
+    selected="$(printf '%s\n' "multiplexing" "hash_known_hosts" | \
+      fzf --multi \
+          --prompt="  Enable features > " \
+          --header="Connection features (Space=toggle, Enter=confirm)" \
+          --bind=space:toggle \
+          --no-sort \
+          --marker='*'
+    )" || selected=""
+
+    while IFS= read -r feat; do
+      [ -n "$feat" ] && ENABLED+=("$feat")
+    done <<< "$selected"
+
+    for feat in multiplexing hash_known_hosts; do
+      local found=false
+      for e in "${ENABLED[@]+"${ENABLED[@]}"}"; do [ "$e" = "$feat" ] && found=true && break; done
+      [ "$found" = "false" ] && DISABLED+=("$feat")
+    done
+  else
+    ENABLED=(multiplexing hash_known_hosts)
+    info "fzf not found — enabling all connection features"
+  fi
+
+  # Keepalive variant
+  echo ""
+  info "Keepalive interval (ServerAliveInterval):"
+  local PS3="  Choose: "
+  select ka in "60s (default)" "30s" "disabled"; do
+    case "$REPLY" in
+      1) VARIANTS[keepalive]="60"; break ;;
+      2) VARIANTS[keepalive]="30"; break ;;
+      3) VARIANTS[keepalive]="no"; break ;;
+      *) warn "Enter 1, 2, or 3" ;;
+    esac
+  done
+
+  # ControlPersist (only if multiplexing enabled)
+  local mux_enabled=false
+  for f in "${ENABLED[@]+"${ENABLED[@]}"}"; do [ "$f" = "multiplexing" ] && mux_enabled=true && break; done
+
+  if [ "$mux_enabled" = "true" ]; then
+    echo ""
+    info "ControlPersist duration:"
+    select cp in "600s (default)" "60s" "indefinite"; do
+      case "$REPLY" in
+        1) VARIANTS[control_persist]="600"; break ;;
+        2) VARIANTS[control_persist]="60";  break ;;
+        3) VARIANTS[control_persist]="yes"; break ;;
+        *) warn "Enter 1, 2, or 3" ;;
+      esac
+    done
+  else
+    VARIANTS[control_persist]="600"
+  fi
+
+  # ── Stage 3 — Key generation ───────────────────────────────────────────────
   stage_keygen
+
+  # ── Stage 4 — Write + apply ────────────────────────────────────────────────
   stage_write
 }
 
