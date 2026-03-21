@@ -120,12 +120,6 @@ generate_ssh_config() {
   printf '%s' "$out"
 }
 
-# ── Source-only guard (for testing) ──────────────────────────────────────────
-# Set SSH_CONFIG_SOURCE_ONLY=1 to source this file without running install logic.
-if [ "${SSH_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
-  return 0 2>/dev/null || exit 0
-fi
-
 # ── cmd_status ────────────────────────────────────────────────────────────────
 cmd_status() {
   header "SSH Configuration Status"
@@ -243,7 +237,76 @@ stage_keygen() {
     esac
   done
 }
-stage_write()  { info "Write stage not yet implemented"; }
+stage_write() {
+  header "Stage 4 — Write + apply"
+  echo ""
+
+  SSH_CONF_OUT="$(generate_ssh_config)"
+
+  if [ "$DRY_RUN" = "true" ]; then
+    info "(dry-run mode — no files will be written)"
+    echo ""
+    info "Would write to: ${SSH_CONFIG_FILE}"
+    echo "  ────────────────────────────────────────────"
+    echo "$SSH_CONF_OUT"
+    echo "  ────────────────────────────────────────────"
+
+    if [ -n "$KEYGEN_PATH" ] && [ ! -f "$KEYGEN_PATH" ]; then
+      local keygen_cmd="ssh-keygen -t ${KEYGEN_TYPE} -f ${KEYGEN_PATH}"
+      [ -n "$KEYGEN_COMMENT" ] && keygen_cmd+=" -C \"${KEYGEN_COMMENT}\""
+      [ "$KEYGEN_PASSPHRASE" = "no" ] && keygen_cmd+=" -N \"\""
+      echo ""
+      info "Would run: ${keygen_cmd}"
+    fi
+    return
+  fi
+
+  # Ensure ~/.ssh/ exists with 700
+  run_cmd mkdir -p "$HOME/.ssh"
+  run_cmd chmod 700 "$HOME/.ssh"
+
+  # Ensure sockets dir
+  run_cmd mkdir -p "$HOME/.ssh/sockets"
+
+  # Back up existing regular file (not a symlink)
+  if [ -f "$HOME/.ssh/config" ] && [ ! -L "$HOME/.ssh/config" ]; then
+    local backup="$HOME/.ssh/config.backup.$(date +%Y%m%d_%H%M%S)"
+    info "Backing up ~/.ssh/config → ${backup}"
+    cp "$HOME/.ssh/config" "$backup"
+  fi
+
+  # Write generated config to repo file
+  printf '%s\n' "$SSH_CONF_OUT" > "$SSH_CONFIG_FILE"
+
+  # Symlink ~/.ssh/config → repo file
+  run_cmd ln -sf "$SSH_CONFIG_FILE" "$HOME/.ssh/config"
+
+  # Permissions on repo file (not the symlink)
+  chmod 600 "$SSH_CONFIG_FILE"
+
+  success "Written: ${SSH_CONFIG_FILE}"
+  success "Symlinked: ~/.ssh/config → ${SSH_CONFIG_FILE}"
+
+  # Key generation
+  if [ -n "$KEYGEN_PATH" ] && [ ! -f "$KEYGEN_PATH" ]; then
+    echo ""
+    info "Generating SSH key..."
+    local keygen_args=(-t "$KEYGEN_TYPE" -f "$KEYGEN_PATH")
+    [ -n "$KEYGEN_COMMENT" ] && keygen_args+=(-C "$KEYGEN_COMMENT")
+    [ "$KEYGEN_PASSPHRASE" = "no" ] && keygen_args+=(-N "")
+
+    if ssh-keygen "${keygen_args[@]}"; then
+      success "Key generated: ${KEYGEN_PATH}"
+    else
+      error "ssh-keygen failed"
+      exit 1
+    fi
+  fi
+
+  # Status summary
+  echo ""
+  cmd_status
+}
 
 main() {
   # ── Non-interactive guard ─────────────────────────────────────────────────
@@ -362,6 +425,12 @@ main() {
   # ── Stage 4 — Write + apply ────────────────────────────────────────────────
   stage_write
 }
+
+# ── Source-only guard (for testing) ──────────────────────────────────────────
+# Set SSH_CONFIG_SOURCE_ONLY=1 to source this file without running install logic.
+if [ "${SSH_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
+  return 0 2>/dev/null || exit 0
+fi
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-}" in
