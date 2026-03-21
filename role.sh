@@ -76,7 +76,7 @@ cmd_apply() {
 
   # Always apply Dock layout — runs even if zshrc role marker already exists
   if [ -f "$SCRIPT_DIR/dock-config.sh" ]; then
-    bash "$SCRIPT_DIR/dock-config.sh" --apply "$role"
+    bash "$SCRIPT_DIR/dock-config.sh" --apply "$role" || true
   fi
 
   if is_applied "$role"; then
