@@ -93,7 +93,7 @@ else
   fail "invalid flag should exit non-zero"
 fi
 
-# --dry-run exits 0 in non-interactive mode (no stdin)
+# --dry-run exits 0 (interactive MODE, non-interactive stdin path)
 if bash "$SCRIPT_DIR/dock-config.sh" --dry-run </dev/null >/dev/null 2>&1; then
   pass "--dry-run exits 0"
 else
