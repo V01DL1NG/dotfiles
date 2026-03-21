@@ -186,7 +186,63 @@ cmd_status() {
 }
 
 # ── main (TUI stages — stub, filled in later tasks) ───────────────────────────
-stage_keygen() { KEYGEN_PATH=""; }
+stage_keygen() {
+  KEYGEN_PATH=""
+  KEYGEN_TYPE="ed25519"
+  KEYGEN_COMMENT=""
+  KEYGEN_PASSPHRASE="no"
+
+  # Skip entirely if auth is 1password-only — no key files needed
+  if [ "$AUTH_METHOD" = "1password" ]; then
+    return
+  fi
+
+  header "Stage 3 — Key generation"
+  echo ""
+
+  # Key name
+  local key_name="id_ed25519"
+  info "Key file name (in ~/.ssh/):"
+  read -r -p "  Name [${key_name}]: " input_name
+  [ -n "$input_name" ] && key_name="$input_name"
+  KEYGEN_PATH="$HOME/.ssh/${key_name}"
+
+  # Key already exists — skip generation
+  if [ -f "$KEYGEN_PATH" ]; then
+    local fp; fp="$(ssh-keygen -l -f "$KEYGEN_PATH" 2>/dev/null | awk '{print $2, $4}' || echo "unreadable")"
+    success "Key already exists at ${KEYGEN_PATH} — ${fp}"
+    return
+  fi
+
+  # Key type
+  echo ""
+  info "Key type:"
+  local PS3="  Choose: "
+  select kt in "ed25519 (recommended)" "rsa" "ecdsa"; do
+    case "$REPLY" in
+      1) KEYGEN_TYPE="ed25519"; break ;;
+      2) KEYGEN_TYPE="rsa";     break ;;
+      3) KEYGEN_TYPE="ecdsa";   break ;;
+      *) warn "Enter 1, 2, or 3" ;;
+    esac
+  done
+
+  # Comment
+  echo ""
+  info "Key comment (email or label — leave empty for none):"
+  read -r -p "  Comment: " KEYGEN_COMMENT
+
+  # Passphrase
+  echo ""
+  info "Passphrase:"
+  select pp in "Set a passphrase (prompted during generation)" "No passphrase (empty)"; do
+    case "$REPLY" in
+      1) KEYGEN_PASSPHRASE="yes"; break ;;
+      2) KEYGEN_PASSPHRASE="no";  break ;;
+      *) warn "Enter 1 or 2" ;;
+    esac
+  done
+}
 stage_write()  { info "Write stage not yet implemented"; }
 
 main() {
