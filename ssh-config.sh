@@ -126,12 +126,83 @@ if [ "${SSH_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-# ── Arg parsing ───────────────────────────────────────────────────────────────
+# ── cmd_status ────────────────────────────────────────────────────────────────
+cmd_status() {
+  header "SSH Configuration Status"
+  echo ""
+
+  # 1. Symlink check
+  if [ -L "$HOME/.ssh/config" ] && [ "$(readlink "$HOME/.ssh/config")" = "$SSH_CONFIG_FILE" ]; then
+    success "~/.ssh/config → ${SSH_CONFIG_FILE}"
+  else
+    warn "~/.ssh/config is not symlinked to ${SSH_CONFIG_FILE}"
+  fi
+
+  # 2. Permissions
+  local perms; perms="$(stat -f '%OLp' "$HOME/.ssh" 2>/dev/null || echo "?")"
+  if [ "$perms" = "700" ]; then
+    success "~/.ssh permissions: 700"
+  else
+    warn "~/.ssh permissions: ${perms} (expected 700)"
+  fi
+
+  # 3. Sockets dir
+  if [ -d "$HOME/.ssh/sockets" ]; then
+    success "~/.ssh/sockets/ exists"
+  else
+    warn "~/.ssh/sockets/ missing — multiplexing will fail"
+  fi
+
+  # 4. 1Password agent socket
+  if [ -S "$HOME/.1password/agent.sock" ]; then
+    success "1Password agent socket: ~/.1password/agent.sock"
+  else
+    warn "1Password agent socket not found (app may be closed)"
+  fi
+
+  # 5. Key files
+  local keys=()
+  while IFS= read -r -d '' key; do
+    keys+=("$key")
+  done < <(find "$HOME/.ssh" -maxdepth 1 -name 'id_*' ! -name '*.pub' -print0 2>/dev/null)
+
+  if [ "${#keys[@]}" -eq 0 ]; then
+    warn "No SSH key files found (id_*)"
+  else
+    for key in "${keys[@]}"; do
+      local fp; fp="$(ssh-keygen -l -f "$key" 2>/dev/null | awk '{print $2, $4}' || echo "unreadable")"
+      success "Key: ${key} — ${fp}"
+    done
+  fi
+
+  # 6. Auth method from generated config
+  local method="unknown"
+  if [ -f "$SSH_CONFIG_FILE" ]; then
+    method="$(grep '^# Auth method:' "$SSH_CONFIG_FILE" 2>/dev/null | head -1 | sed 's/# Auth method: //' || echo "unknown")"
+  fi
+  info "Auth method: ${method}"
+
+  echo ""
+}
+
+# ── main (TUI stages — stub, filled in later tasks) ───────────────────────────
+stage_keygen() { KEYGEN_PATH=""; }
+stage_write()  { info "Write stage not yet implemented"; }
+
+main() {
+  if [ ! -t 0 ] && [ "$DRY_RUN" = "false" ]; then
+    info "No TTY detected — skipping interactive TUI"
+    exit 0
+  fi
+  info "SSH config TUI — stages coming soon"
+  stage_keygen
+  stage_write
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-}" in
-  --dry-run) DRY_RUN=true ;;
-  --status)  : ;;
-  "")        : ;;
+  --status)  cmd_status ;;
+  --dry-run) DRY_RUN=true; main ;;
+  "")        main ;;
   *) error "Unknown flag: ${1}"; echo "Usage: ./ssh-config.sh [--status|--dry-run]" >&2; exit 1 ;;
 esac
-
-echo "ssh-config.sh: not yet implemented"
