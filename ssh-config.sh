@@ -81,6 +81,42 @@ generate_ssh_config() {
       ;;
   esac
 
+  # ── Keepalive ─────────────────────────────────────────────────────────────
+  local keepalive="${VARIANTS[keepalive]:-60}"
+  if [ "$keepalive" != "no" ]; then
+    out+=""$'\n'
+    out+="    # ── Keepalive ─────────────────────────────────────────────────────────────"$'\n'
+    out+="    ServerAliveInterval ${keepalive}"$'\n'
+    out+="    ServerAliveCountMax 3"$'\n'
+  fi
+
+  # ── Multiplexing ──────────────────────────────────────────────────────────
+  local mux_on=false
+  for f in "${ENABLED[@]+"${ENABLED[@]}"}"; do
+    [ "$f" = "multiplexing" ] && mux_on=true && break
+  done
+
+  if [ "$mux_on" = "true" ]; then
+    local cp="${VARIANTS[control_persist]:-600}"
+    out+=""$'\n'
+    out+="    # ── Multiplexing ──────────────────────────────────────────────────────────"$'\n'
+    out+="    ControlMaster auto"$'\n'
+    out+="    ControlPath ~/.ssh/sockets/%r@%h-%p"$'\n'
+    out+="    ControlPersist ${cp}"$'\n'
+  fi
+
+  # ── Security ──────────────────────────────────────────────────────────────
+  local hash_on=false
+  for f in "${ENABLED[@]+"${ENABLED[@]}"}"; do
+    [ "$f" = "hash_known_hosts" ] && hash_on=true && break
+  done
+
+  if [ "$hash_on" = "true" ]; then
+    out+=""$'\n'
+    out+="    # ── Security ──────────────────────────────────────────────────────────────"$'\n'
+    out+="    HashKnownHosts yes"$'\n'
+  fi
+
   printf '%s' "$out"
 }
 

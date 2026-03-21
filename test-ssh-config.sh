@@ -86,6 +86,64 @@ echo "$out" | grep -q '# Auth method: 1password' \
   && pass "header comment includes auth method" \
   || fail "header comment missing auth method"
 
+# ── generate_ssh_config — connection settings ─────────────────────────────────
+
+section "generate_ssh_config — connection settings"
+
+# Helper: run generate_ssh_config with given feature/variant settings
+_gen_with() {
+  local method="$1" enabled_csv="$2" keepalive="$3" cp="$4"
+  SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
+  AUTH_METHOD="$method"
+  IFS=',' read -r -a ENABLED <<< "$enabled_csv"
+  DISABLED=()
+  declare -gA VARIANTS=([keepalive]="$keepalive" [control_persist]="$cp")
+  KEYGEN_PATH=""
+  generate_ssh_config
+}
+
+# Multiplexing on
+out="$(_gen_with fallback "multiplexing,hash_known_hosts" "60" "600")"
+echo "$out" | grep -q 'ControlMaster auto' \
+  && pass "mux on: ControlMaster present" \
+  || fail "mux on: ControlMaster missing"
+echo "$out" | grep -q 'ControlPath' \
+  && pass "mux on: ControlPath present" \
+  || fail "mux on: ControlPath missing"
+echo "$out" | grep -q 'ControlPersist 600' \
+  && pass "mux on: ControlPersist 600" \
+  || fail "mux on: ControlPersist wrong"
+
+# Multiplexing off
+out="$(_gen_with fallback "hash_known_hosts" "60" "600")"
+! echo "$out" | grep -q 'ControlMaster' \
+  && pass "mux off: no ControlMaster" \
+  || fail "mux off: ControlMaster should not appear"
+
+# HashKnownHosts on
+out="$(_gen_with fallback "multiplexing,hash_known_hosts" "60" "600")"
+echo "$out" | grep -q 'HashKnownHosts yes' \
+  && pass "hash on: HashKnownHosts yes" \
+  || fail "hash on: HashKnownHosts missing"
+
+# HashKnownHosts off
+out="$(_gen_with fallback "multiplexing" "60" "600")"
+! echo "$out" | grep -q 'HashKnownHosts' \
+  && pass "hash off: no HashKnownHosts" \
+  || fail "hash off: HashKnownHosts should not appear"
+
+# Keepalive interval 30
+out="$(_gen_with fallback "multiplexing" "30" "600")"
+echo "$out" | grep -q 'ServerAliveInterval 30' \
+  && pass "keepalive: interval 30" \
+  || fail "keepalive: interval wrong"
+
+# Keepalive disabled
+out="$(_gen_with fallback "multiplexing" "no" "600")"
+! echo "$out" | grep -q 'ServerAliveInterval' \
+  && pass "keepalive disabled: no ServerAliveInterval" \
+  || fail "keepalive disabled: ServerAliveInterval should not appear"
+
 # ── Summary ──────────────────────────────────────────────────────────────────
 
 echo ""
