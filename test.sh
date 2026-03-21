@@ -181,6 +181,7 @@ syntax_check macos-defaults.sh
 syntax_check touchid-sudo.sh
 syntax_check dock-config.sh
 syntax_check ssh-config.sh
+syntax_check font-config.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
