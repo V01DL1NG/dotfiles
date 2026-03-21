@@ -74,6 +74,11 @@ cmd_apply() {
 
   validate_role "$role"
 
+  # Always apply Dock layout — runs even if zshrc role marker already exists
+  if [ -f "$SCRIPT_DIR/dock-config.sh" ]; then
+    bash "$SCRIPT_DIR/dock-config.sh" --apply "$role"
+  fi
+
   if is_applied "$role"; then
     warn "Role '${role}' is already applied — skipping."
     exit 0
