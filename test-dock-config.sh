@@ -72,7 +72,6 @@ else
   fail "dry-run: killall Dock missing"
 fi
 
-rm -rf "$FIXTURE_DIR"
 
 # ── Arg parsing ───────────────────────────────────────────────────────────────
 section "Arg parsing"

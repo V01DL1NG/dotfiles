@@ -166,6 +166,7 @@ fzf_app_picker() {
   local role="$1"
   SELECTED_APPS=()
 
+  # mapfile and local -a require bash 4+ (Homebrew bash; system bash 3.2 not supported)
   local -a app_list
   mapfile -t app_list < <(scan_apps)
 
@@ -186,6 +187,7 @@ fzf_app_picker() {
     echo ""
     echo "  Enter app numbers separated by spaces (e.g. 1 3 5):"
     read -r -p "  > " choices
+    # shellcheck disable=SC2086  # intentional word-split on space-separated input
     for idx in $choices; do
       if [[ "$idx" =~ ^[0-9]+$ ]] && (( idx >= 1 && idx <= ${#app_list[@]} )); then
         SELECTED_APPS+=("${app_list[$((idx - 1))]}")
@@ -325,7 +327,7 @@ dock_customise() {
   success "Dock customisation complete."
 }
 
-# ── Source-only guard (for testing) ──────────────────────────────────────────
+# ── Source-only guard (for testing, macOS only — Linux exits at macOS guard) ─
 if [ "${DOCK_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
   return 0 2>/dev/null || exit 0
 fi

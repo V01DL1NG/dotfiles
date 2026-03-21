@@ -1,3 +1,5 @@
+# dock-position: bottom
+# dock-clear: yes
 /Applications/Finder.app
 /Applications/Arc.app
 /Applications/Safari.app
