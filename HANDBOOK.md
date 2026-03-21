@@ -443,25 +443,43 @@ Mason auto-installs lua_ls, pyright, and ts_ls on first launch.
 
 ## SSH
 
-### Connection Multiplexing
+Run `./ssh-config.sh` to configure SSH interactively. The script guides you through four stages and generates `~/.ssh/config` via a symlink to `ssh_config` in this repo.
 
-Your first SSH to a host opens a connection. Subsequent SSH/SCP/Git operations to the same host reuse it — instant connections with no re-authentication.
+### Setup
 
 ```bash
-ssh user@host           first connection (normal)
-ssh user@host           instant (reuses connection)
-scp file user@host:~    instant (reuses connection)
+./ssh-config.sh          # interactive TUI
+./ssh-config.sh --status # diagnose current state
 ```
 
-Connections persist for 10 minutes after the last use.
+**Stage 1 — Auth method:**
+- **1Password agent only** — uses 1Password's SSH agent socket (`~/.1password/agent.sock`). Requires 1Password app with SSH agent enabled in Settings → Developer.
+- **File-based keys only** — uses `~/.ssh/<name>` key files.
+- **1Password with file-based fallback** *(recommended)* — agent tried first; file key used if agent unavailable.
 
-### Keychain
+**Stage 2 — Connection settings:**
+- Connection multiplexing (reuse connections — faster Git/SCP)
+- Hash known hosts (security hardening)
+- Keepalive interval (60s default)
+- ControlPersist duration (600s default)
 
-SSH key passphrases are stored in macOS Keychain. You enter the passphrase once, then never again (even across reboots).
+**Stage 3 — Key generation:**
+Skipped if 1Password-only auth is chosen or a key already exists. Otherwise prompts for key name, type (`ed25519` recommended), comment, and passphrase.
+
+**Stage 4 — Write + apply:**
+Generates `ssh_config`, symlinks `~/.ssh/config`, and optionally runs `ssh-keygen`.
+
+### Status
+
+```bash
+./ssh-config.sh --status
+```
+
+Reports: symlink state, `~/.ssh` permissions, sockets dir, 1Password agent socket, key fingerprints, auth method.
 
 ### Host Aliases
 
-Add shortcuts in `~/.ssh/config`:
+Add shortcuts directly in `ssh_config` in this repo (note: file is overwritten on next `./ssh-config.sh` run — add aliases after the generated `Host *` block):
 
 ```
 Host myserver
@@ -471,6 +489,18 @@ Host myserver
 ```
 
 Then just `ssh myserver` instead of `ssh -p 2222 admin@192.168.1.100`.
+
+### Connection Multiplexing
+
+Your first SSH to a host opens a connection. Subsequent SSH/SCP/Git operations to the same host reuse it — instant connections with no re-authentication.
+
+```bash
+ssh user@host           # first connection (normal)
+ssh user@host           # instant (reuses connection)
+scp file user@host:~    # instant (reuses connection)
+```
+
+Connections persist for 10 minutes (600s) after the last use.
 
 ---
 

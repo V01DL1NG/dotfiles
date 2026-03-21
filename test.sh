@@ -180,6 +180,7 @@ syntax_check bootstrap-server.sh
 syntax_check macos-defaults.sh
 syntax_check touchid-sudo.sh
 syntax_check dock-config.sh
+syntax_check ssh-config.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
@@ -235,6 +236,18 @@ elif bash "$SCRIPT_DIR/test-dock-config.sh" >/dev/null 2>&1; then
   pass "test-dock-config.sh passed"
 else
   fail "test-dock-config.sh — one or more checks failed (run ./test-dock-config.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
+section "SSH Config — test-ssh-config.sh"
+# ════════════════════════════════════════════════
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  warn "test-ssh-config.sh skipped (macOS only)"
+elif bash "$SCRIPT_DIR/test-ssh-config.sh" >/dev/null 2>&1; then
+  pass "test-ssh-config.sh passed"
+else
+  fail "test-ssh-config.sh — one or more checks failed (run ./test-ssh-config.sh for details)"
 fi
 
 # ════════════════════════════════════════════════
