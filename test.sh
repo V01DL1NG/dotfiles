@@ -252,6 +252,16 @@ else
 fi
 
 # ════════════════════════════════════════════════
+section "Font Config — test-font-config.sh"
+# ════════════════════════════════════════════════
+
+if bash "$SCRIPT_DIR/test-font-config.sh" >/dev/null 2>&1; then
+  pass "test-font-config.sh passed"
+else
+  fail "test-font-config.sh — one or more checks failed (run ./test-font-config.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
 echo ""
 echo "────────────────────────────────"
 printf "  passed: %d  failed: %d  warnings: %d\n" "$PASS" "$FAIL" "$WARN"
