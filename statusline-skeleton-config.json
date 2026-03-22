@@ -1,0 +1,65 @@
+{
+  "segments": ["path", "git", "ctx", "5h_pct", "model"],
+  "segment_config": {
+    "path": {
+      "max_depth": 3,
+      "color": "fg"
+    },
+    "git": {
+      "show_changes": true,
+      "color": "accent"
+    },
+    "vim_mode": {
+      "insert_color": "cyan",
+      "normal_color": "yellow"
+    },
+    "model": {
+      "color": "dim"
+    },
+    "ctx": {
+      "warn_threshold": 20,
+      "color": "cyan",
+      "warn_color": "red"
+    },
+    "5h_pct": {
+      "warn_threshold": 80,
+      "color": "yellow",
+      "warn_color": "red"
+    },
+    "5h_tokens": {
+      "warn_threshold": 80,
+      "color": "yellow",
+      "warn_color": "red"
+    },
+    "weekly": {
+      "warn_threshold": 80,
+      "color": "yellow",
+      "warn_color": "red"
+    },
+    "reset_5h": {
+      "color": "dim"
+    },
+    "reset_weekly": {
+      "color": "dim"
+    },
+    "cost": {
+      "warn_threshold": 5.0,
+      "color": "fg",
+      "warn_color": "red"
+    },
+    "mode": {
+      "plan_color": "cyan",
+      "auto_color": "yellow",
+      "normal_color": "dim"
+    }
+  },
+  "palette": {
+    "fg":       "#EFDCF9",
+    "accent":   "#69307A",
+    "cyan":     "#7FD5EA",
+    "yellow":   "#E4F34A",
+    "dim":      "#4c1f5e",
+    "red":      "#FF3C3C",
+    "lavender": "#341948"
+  }
+}

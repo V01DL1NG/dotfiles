@@ -32,3 +32,6 @@ atuin.key
 # Logs
 *.log
 .worktrees/
+
+# Statusline local customization (machine-specific, generated from skeleton)
+statusline-config.json
