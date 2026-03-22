@@ -504,7 +504,7 @@ main() {
   # Stage 1: toggle + reorder
   echo ""
   info "Stage 1: Toggle and order segments"
-  tui_stage1_toggle "$CONFIG_PATH" || true
+  tui_stage1_toggle "$CONFIG_PATH" || { info "Cancelled."; exit 0; }
 
   # Stage 2: per-segment config
   echo ""
