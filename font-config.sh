@@ -72,7 +72,21 @@ detect_terminal_font_status() {
         || echo "installed_not_configured"
       ;;
     vscode)
-      echo "not_installed"  # placeholder — implemented in Task 3
+      local settings_path
+      if [ -n "$config_override" ]; then
+        settings_path="$config_override"
+      else
+        command -v code >/dev/null 2>&1 || { echo "not_installed"; return; }
+        if [ "$DOTFILES_OS" = "macos" ]; then
+          settings_path="$HOME/Library/Application Support/Code/User/settings.json"
+        else
+          settings_path="$HOME/.config/Code/User/settings.json"
+        fi
+      fi
+      [ -f "$settings_path" ] || { echo "installed_not_configured"; return; }
+      grep -q '"terminal.integrated.fontFamily".*FiraCode' "$settings_path" \
+        && echo "installed_configured" \
+        || echo "installed_not_configured"
       ;;
     iterm2)
       echo "not_installed"  # placeholder — implemented in Task 4

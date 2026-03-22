@@ -59,6 +59,30 @@ status="$(detect_terminal_font_status kitty "$TMPDIR_TEST/kitty-no-font.conf")"
   && pass "kitty: no font line → installed_not_configured" \
   || fail "kitty: no font line → got '$status'"
 
+# ── detect_terminal_font_status — VS Code ────────────────────────────────────
+section "detect_terminal_font_status — VS Code"
+
+# VS Code: override points to absent file → installed_not_configured
+status="$(detect_terminal_font_status vscode "$TMPDIR_TEST/no-settings.json")"
+[ "$status" = "installed_not_configured" ] \
+  && pass "vscode: absent settings.json → installed_not_configured" \
+  || fail "vscode: absent settings.json → got '$status'"
+
+# VS Code: settings.json without font key → installed_not_configured
+printf '{\n    "editor.fontSize": 14\n}\n' > "$TMPDIR_TEST/vscode-no-font.json"
+status="$(detect_terminal_font_status vscode "$TMPDIR_TEST/vscode-no-font.json")"
+[ "$status" = "installed_not_configured" ] \
+  && pass "vscode: settings without font key → installed_not_configured" \
+  || fail "vscode: settings without font key → got '$status'"
+
+# VS Code: settings.json with font key set to FiraCode → installed_configured
+printf '{\n    "terminal.integrated.fontFamily": "FiraCode Nerd Font"\n}\n' \
+  > "$TMPDIR_TEST/vscode-ok.json"
+status="$(detect_terminal_font_status vscode "$TMPDIR_TEST/vscode-ok.json")"
+[ "$status" = "installed_configured" ] \
+  && pass "vscode: fontFamily = FiraCode → installed_configured" \
+  || fail "vscode: fontFamily = FiraCode → got '$status'"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
