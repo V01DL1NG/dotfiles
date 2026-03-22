@@ -119,6 +119,24 @@ else
     || fail "iterm2: empty DynamicProfiles → got '$status'"
 fi
 
+# ── Arg parsing ───────────────────────────────────────────────────────────────
+section "Arg parsing"
+
+# --status exits 0
+bash "$SCRIPT_DIR/font-config.sh" --status </dev/null >/dev/null 2>&1 \
+  && pass "--status exits 0" \
+  || fail "--status exits non-zero"
+
+# --dry-run exits 0
+bash "$SCRIPT_DIR/font-config.sh" --dry-run </dev/null >/dev/null 2>&1 \
+  && pass "--dry-run exits 0" \
+  || fail "--dry-run exits non-zero"
+
+# unknown flag exits non-zero
+bash "$SCRIPT_DIR/font-config.sh" --badflag </dev/null >/dev/null 2>&1 \
+  && fail "--badflag should exit non-zero" \
+  || pass "--badflag exits non-zero"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"

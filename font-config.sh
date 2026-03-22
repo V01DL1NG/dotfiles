@@ -305,6 +305,31 @@ main() {
   for terminal in "${selected[@]}"; do
     _apply_fix "$terminal"
   done
+
+  # Stage 4 — Verify
+  echo ""
+  header "Verification"
+  local still_broken=false
+  for terminal in "${selected[@]}"; do
+    status="$(detect_terminal_font_status "$terminal")"
+    case "$status" in
+      installed_configured)
+        success "$terminal: now configured"
+        ;;
+      installed_not_configured)
+        warn "$terminal: still not configured — follow the instructions above"
+        still_broken=true
+        ;;
+    esac
+  done
+
+  if [ "$still_broken" = "true" ]; then
+    echo ""
+    warn "Some terminals still need manual steps. Re-run ./font-config.sh --status to check."
+  else
+    echo ""
+    success "All selected terminals are now configured."
+  fi
 }
 
 # ── Source-only guard (place after ALL function definitions) ──────────────────
