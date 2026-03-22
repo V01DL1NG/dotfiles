@@ -521,6 +521,48 @@ Both profiles inherit their colors from Velvet, so changing a color in Velvet au
 
 ---
 
+## Nerd Font (FiraCode)
+
+Oh-my-posh uses Nerd Font glyphs for the velvet prompt. If you see `?` boxes or garbled characters, the font is either not installed or your terminal isn't configured to use it.
+
+### Quick check
+
+```bash
+./doctor.sh
+```
+
+Look for the "Nerd Font (FiraCode)" section. It reports:
+- Whether the font files are installed
+- Whether each installed terminal is configured to use FiraCode Nerd Font
+
+### Install the font
+
+```bash
+brew install --cask font-fira-code-nerd-font
+```
+
+### Configure your terminals
+
+```bash
+./font-config.sh          # interactive — detect and fix
+./font-config.sh --status  # check only, no changes
+```
+
+For iTerm2 and Ghostty/Kitty, the font is set by your profile. If it's misconfigured, re-run:
+
+```bash
+./iterm-config.sh     # iTerm2
+./choose-profile.sh   # Ghostty / Kitty
+```
+
+For VS Code, `font-config.sh` updates `settings.json` directly. If your settings file uses JSONC (comments or trailing commas), add the line manually:
+
+```json
+"terminal.integrated.fontFamily": "FiraCode Nerd Font"
+```
+
+---
+
 ## Brewfile
 
 Recreate your full tool setup on a new Mac:
