@@ -259,7 +259,7 @@ for seg in segments:
             '# cost',
             '_cost=$(echo "$input" | jq -r \'.billing.session_cost // empty\')',
             'if [ -n "$_cost" ]; then',
-            f'  _cost_warn=$(python3 -c "print(1 if float(\'$_cost\') >= {thr} else 0)" 2>/dev/null || echo 0)',
+            f'  _cost_warn=$(python3 -c "import sys; print(1 if float(sys.argv[1]) >= {thr} else 0)" "$_cost" 2>/dev/null || echo 0)',
             f'  if [ "$_cost_warn" = "1" ]; then _costc="${{{wc}}}"; else _costc="${{{c}}}"; fi',
             r'  parts_out+=("$(printf "$_costc \$%.2f${RESET}" "$_cost")")',
             'fi',
@@ -302,7 +302,12 @@ cmd_status() {
     return 0
   fi
   local segs
-  segs=$(python3 -c "import json; c=json.load(open('$CONFIG_PATH')); print(', '.join(c['segments']))")
+  segs=$(python3 - "$CONFIG_PATH" << 'PYEOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+print(', '.join(c['segments']))
+PYEOF
+)
   success "Active segments: $segs"
   info "Config: $CONFIG_PATH"
   info "Output: $OUTPUT_PATH"
@@ -313,7 +318,12 @@ tui_stage1_toggle() {
   local config="$1"
   local all_segs="path git vim_mode model ctx 5h_pct 5h_tokens weekly reset_5h reset_weekly cost mode"
   local enabled
-  enabled=$(python3 -c "import json; c=json.load(open('$config')); print('\n'.join(c['segments']))")
+  enabled=$(python3 - "$config" << 'PYEOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+print('\n'.join(c['segments']))
+PYEOF
+)
 
   local choices=""
   for seg in $all_segs; do
@@ -384,7 +394,12 @@ tui_stage2_config() {
   local preset_thresholds="10 15 20 25 30 50 80"
 
   local segments
-  segments=$(python3 -c "import json; c=json.load(open('$config')); print('\n'.join(c['segments']))")
+  segments=$(python3 - "$config" << 'PYEOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+print('\n'.join(c['segments']))
+PYEOF
+)
 
   while IFS= read -r seg; do
     local options=()
@@ -408,7 +423,13 @@ tui_stage2_config() {
       local menu=""
       for opt in "${options[@]}"; do
         local cur
-        cur=$(python3 -c "import json; c=json.load(open('$config')); print(c.get('segment_config',{}).get('$seg',{}).get('$opt','—'))" 2>/dev/null || echo "—")
+        cur=$(python3 - "$config" "$seg" "$opt" << 'PYEOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+val = c.get('segment_config', {}).get(sys.argv[2], {}).get(sys.argv[3], '—')
+print(val)
+PYEOF
+2>/dev/null || echo "—")
         menu+="$opt    [current: $cur]\n"
       done
 
@@ -495,6 +516,7 @@ tui_stage3_preview() {
 # ── main ──────────────────────────────────────────────────────────────────────
 main() {
   command -v fzf >/dev/null 2>&1 || { error "fzf not found — install with: brew install fzf"; exit 1; }
+  command -v python3 >/dev/null 2>&1 || { error "python3 not found — install python3 to use this tool"; exit 1; }
 
   ensure_config "$CONFIG_PATH" "$SKELETON_PATH"
 
