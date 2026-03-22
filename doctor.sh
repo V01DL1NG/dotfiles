@@ -267,18 +267,62 @@ section_git() {
 
 # ── Section: Nerd Font ────────────────────────────────────────────────────────
 section_font() {
-  # FiraCode font check is macOS-specific (Library/Fonts path)
-  [ "$DOTFILES_OS" != "macos" ] && return
-
   header "Nerd Font (FiraCode)"
 
-  if ls ~/Library/Fonts/FiraCode*.ttf \
-        ~/Library/Fonts/FiraCodeNerdFont*.ttf \
-        /Library/Fonts/FiraCode*.ttf \
-        2>/dev/null | grep -q .; then
+  # Font file presence check (platform-specific paths)
+  local font_found=false
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    ls ~/Library/Fonts/FiraCode*.ttf \
+       ~/Library/Fonts/FiraCodeNerdFont*.ttf \
+       /Library/Fonts/FiraCode*.ttf \
+       2>/dev/null | grep -q . && font_found=true
+  else
+    ls ~/.local/share/fonts/FiraCode*.ttf \
+       ~/.local/share/fonts/FiraCodeNerdFont*.ttf \
+       /usr/share/fonts/truetype/firacode/FiraCode*.ttf \
+       2>/dev/null | grep -q . && font_found=true
+  fi
+
+  if [ "$font_found" = "true" ]; then
     pass "FiraCode Nerd Font found"
   else
     warn_count "FiraCode Nerd Font not found — install with: brew install --cask font-fira-code-nerd-font"
+    return 0
+  fi
+
+  # Terminal font config checks (shared function from font-config.sh)
+  # shellcheck source=font-config.sh
+  FONT_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/font-config.sh"
+
+  local status
+  for terminal in ghostty kitty vscode; do
+    status="$(detect_terminal_font_status "$terminal")"
+    case "$status" in
+      not_installed) ;;  # silently skip
+      installed_configured)
+        case "$terminal" in
+          ghostty) pass "Ghostty: font configured" ;;
+          kitty)   pass "Kitty: font configured" ;;
+          vscode)  pass "VS Code: terminal font configured" ;;
+        esac
+        ;;
+      installed_not_configured)
+        case "$terminal" in
+          ghostty) warn_count "Ghostty: installed but font not configured — run ./choose-profile.sh or ./font-config.sh" ;;
+          kitty)   warn_count "Kitty: installed but font not configured — run ./choose-profile.sh or ./font-config.sh" ;;
+          vscode)  warn_count "VS Code: terminal font not configured — run ./font-config.sh" ;;
+        esac
+        ;;
+    esac
+  done
+
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    status="$(detect_terminal_font_status iterm2)"
+    case "$status" in
+      not_installed) ;;
+      installed_configured)     pass "iTerm2: font configured" ;;
+      installed_not_configured) warn_count "iTerm2: installed but font not configured — run ./iterm-config.sh" ;;
+    esac
   fi
 }
 
