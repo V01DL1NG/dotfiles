@@ -107,12 +107,69 @@ detect_terminal_font_status() {
   esac
 }
 
+# ── _font_file_present ────────────────────────────────────────────────────────
+_font_file_present() {
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    ls ~/Library/Fonts/FiraCode*.ttf \
+       ~/Library/Fonts/FiraCodeNerdFont*.ttf \
+       /Library/Fonts/FiraCode*.ttf \
+       2>/dev/null | grep -q . && return 0
+  else
+    ls ~/.local/share/fonts/FiraCode*.ttf \
+       ~/.local/share/fonts/FiraCodeNerdFont*.ttf \
+       /usr/share/fonts/truetype/firacode/FiraCode*.ttf \
+       2>/dev/null | grep -q . && return 0
+  fi
+  return 1
+}
+
+# ── _print_terminal_status ────────────────────────────────────────────────────
+_print_terminal_status() {
+  local terminal="$1" status="$2"
+  local label
+  case "$terminal" in
+    iterm2)  label="iTerm2" ;;
+    ghostty) label="Ghostty" ;;
+    kitty)   label="Kitty" ;;
+    vscode)  label="VS Code" ;;
+  esac
+  case "$status" in
+    not_installed)        return ;;  # silently skip
+    installed_configured) success "$label: configured" ;;
+    installed_not_configured)
+      warn "$label: installed but NOT configured — run ./font-config.sh to fix"
+      ;;
+  esac
+}
+
+# ── cmd_status ────────────────────────────────────────────────────────────────
+cmd_status() {
+  header "Nerd Font (FiraCode)"
+
+  if ! _font_file_present; then
+    warn "FiraCode Nerd Font not found — install with: brew install --cask font-fira-code-nerd-font"
+    return 0
+  fi
+  success "FiraCode Nerd Font found"
+
+  local status
+  for terminal in ghostty kitty vscode; do
+    status="$(detect_terminal_font_status "$terminal")"
+    _print_terminal_status "$terminal" "$status"
+  done
+
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    status="$(detect_terminal_font_status iterm2)"
+    _print_terminal_status "iterm2" "$status"
+  fi
+}
+
 # ── Source-only guard (place after ALL function definitions) ──────────────────
 [ "${FONT_CONFIG_SOURCE_ONLY:-}" = "1" ] && return 0
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-}" in
-  --status)   echo "status: not yet implemented"; exit 0 ;;
+  --status)   cmd_status; exit 0 ;;
   --dry-run)  DRY_RUN=true; echo "dry-run: not yet implemented"; exit 0 ;;
   "")         echo "TUI: not yet implemented"; exit 0 ;;
   *)          echo "Usage: font-config.sh [--status|--dry-run]" >&2; exit 1 ;;
