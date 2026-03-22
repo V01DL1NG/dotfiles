@@ -182,6 +182,7 @@ syntax_check touchid-sudo.sh
 syntax_check dock-config.sh
 syntax_check ssh-config.sh
 syntax_check font-config.sh
+syntax_check statusline-customize.sh
 
 # ════════════════════════════════════════════════
 section "Linux Platform — test-platform.sh"
@@ -259,6 +260,16 @@ if bash "$SCRIPT_DIR/test-font-config.sh" >/dev/null 2>&1; then
   pass "test-font-config.sh passed"
 else
   fail "test-font-config.sh — one or more checks failed (run ./test-font-config.sh for details)"
+fi
+
+# ════════════════════════════════════════════════
+section "Statusline Customize — test-statusline-customize.sh"
+# ════════════════════════════════════════════════
+
+if bash "$SCRIPT_DIR/test-statusline-customize.sh" >/dev/null 2>&1; then
+  pass "test-statusline-customize.sh passed"
+else
+  fail "test-statusline-customize.sh — one or more checks failed (run ./test-statusline-customize.sh for details)"
 fi
 
 # ════════════════════════════════════════════════
