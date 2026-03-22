@@ -164,13 +164,156 @@ cmd_status() {
   fi
 }
 
+# ── _fix_vscode_font ──────────────────────────────────────────────────────────
+_fix_vscode_font() {
+  local settings_path
+  if [ "$DOTFILES_OS" = "macos" ]; then
+    settings_path="$HOME/Library/Application Support/Code/User/settings.json"
+  else
+    settings_path="$HOME/.config/Code/User/settings.json"
+  fi
+
+  run_cmd mkdir -p "$(dirname "$settings_path")"
+
+  if [ "$DRY_RUN" = "true" ]; then
+    info "[dry-run] Would set terminal.integrated.fontFamily = FiraCode Nerd Font in:"
+    info "          $settings_path"
+    return 0
+  fi
+
+  local result
+  result=$(python3 -c "
+import json, sys
+path = sys.argv[1]
+try:
+    with open(path) as f:
+        data = json.load(f)
+except FileNotFoundError:
+    data = {}
+except json.JSONDecodeError:
+    print('JSONC_OR_INVALID')
+    sys.exit(0)
+data['terminal.integrated.fontFamily'] = 'FiraCode Nerd Font'
+with open(path, 'w') as f:
+    json.dump(data, f, indent=4)
+print('OK')
+" "$settings_path")
+
+  if [ "$result" = "JSONC_OR_INVALID" ]; then
+    warn "VS Code settings.json contains comments or is invalid JSON — cannot auto-edit."
+    warn "Add this line manually:"
+    info '    "terminal.integrated.fontFamily": "FiraCode Nerd Font"'
+  elif [ "$result" = "OK" ]; then
+    success "VS Code: terminal.integrated.fontFamily set to FiraCode Nerd Font"
+  else
+    error "VS Code: unexpected output: $result"
+  fi
+}
+
+# ── _apply_fix ────────────────────────────────────────────────────────────────
+_apply_fix() {
+  local terminal="$1"
+  case "$terminal" in
+    iterm2)
+      info "iTerm2: font is set by the DynamicProfile. Re-run:"
+      info "    ./iterm-config.sh"
+      ;;
+    ghostty)
+      info "Ghostty: font is set by your dotfiles profile. Re-run:"
+      info "    ./choose-profile.sh"
+      ;;
+    kitty)
+      info "Kitty: font is set by your dotfiles profile. Re-run:"
+      info "    ./choose-profile.sh"
+      ;;
+    vscode)
+      _fix_vscode_font
+      ;;
+  esac
+}
+
+# ── main ──────────────────────────────────────────────────────────────────────
+main() {
+  # Non-interactive guard
+  if [ ! -t 0 ] && [ "$DRY_RUN" = "false" ]; then
+    info "font-config.sh: skipped (non-interactive)"
+    exit 0
+  fi
+
+  # Stage 1 — Detect
+  header "Terminal Font Configuration"
+
+  if ! _font_file_present; then
+    warn "FiraCode Nerd Font not found — install first: brew install --cask font-fira-code-nerd-font"
+    exit 0
+  fi
+  success "FiraCode Nerd Font found"
+
+  local terminals=()
+  [ "$DOTFILES_OS" = "macos" ] && terminals+=(iterm2)
+  terminals+=(ghostty kitty vscode)
+
+  local misconfigured=()
+  local status
+  for terminal in "${terminals[@]}"; do
+    status="$(detect_terminal_font_status "$terminal")"
+    _print_terminal_status "$terminal" "$status"
+    [ "$status" = "installed_not_configured" ] && misconfigured+=("$terminal")
+  done
+
+  if [ "${#misconfigured[@]}" -eq 0 ]; then
+    echo ""
+    success "All installed terminals are configured with FiraCode Nerd Font."
+    exit 0
+  fi
+
+  # Non-interactive dry-run: show all fixes and exit
+  if [ ! -t 0 ] && [ "$DRY_RUN" = "true" ]; then
+    echo ""
+    info "(dry-run mode — no files will be written)"
+    for terminal in "${misconfigured[@]}"; do
+      _apply_fix "$terminal"
+    done
+    exit 0
+  fi
+
+  # Stage 2 — Select
+  echo ""
+  local selected=()
+  if command -v fzf >/dev/null 2>&1; then
+    local fzf_input
+    fzf_input="$(printf '%s\n' "${misconfigured[@]}")"
+    mapfile -t selected < <(
+      echo "$fzf_input" | fzf --multi \
+        --prompt="Select terminals to fix (Space=toggle, Enter=confirm): " \
+        --header="Terminals NOT configured with FiraCode Nerd Font" \
+        --bind=space:toggle
+    ) || true
+  else
+    selected=("${misconfigured[@]}")
+    info "fzf not found — selecting all misconfigured terminals automatically"
+  fi
+
+  if [ "${#selected[@]}" -eq 0 ]; then
+    info "Nothing to do."
+    exit 0
+  fi
+
+  # Stage 3 — Apply
+  echo ""
+  header "Applying Fixes"
+  for terminal in "${selected[@]}"; do
+    _apply_fix "$terminal"
+  done
+}
+
 # ── Source-only guard (place after ALL function definitions) ──────────────────
 [ "${FONT_CONFIG_SOURCE_ONLY:-}" = "1" ] && return 0
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "${1:-}" in
   --status)   cmd_status; exit 0 ;;
-  --dry-run)  DRY_RUN=true; echo "dry-run: not yet implemented"; exit 0 ;;
-  "")         echo "TUI: not yet implemented"; exit 0 ;;
+  --dry-run)  DRY_RUN=true; main ;;
+  "")         main ;;
   *)          echo "Usage: font-config.sh [--status|--dry-run]" >&2; exit 1 ;;
 esac
