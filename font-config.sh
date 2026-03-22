@@ -33,6 +33,53 @@ run_cmd() {
   fi
 }
 
+# ── detect_terminal_font_status ───────────────────────────────────────────────
+# Usage: detect_terminal_font_status TERMINAL [CONFIG_PATH_OVERRIDE]
+# TERMINAL ∈ {ghostty, kitty, vscode, iterm2}
+# CONFIG_PATH_OVERRIDE — if given, skips installed check, checks this path instead
+# Echoes: not_installed | installed_not_configured | installed_configured
+detect_terminal_font_status() {
+  local terminal="$1"
+  local config_override="${2:-}"
+
+  case "$terminal" in
+    ghostty)
+      local config_path="${config_override:-$HOME/.config/ghostty/config}"
+      if [ -z "$config_override" ]; then
+        if [ "$DOTFILES_OS" = "macos" ]; then
+          [ -d "/Applications/Ghostty.app" ] || { echo "not_installed"; return; }
+        else
+          command -v ghostty >/dev/null 2>&1 || { echo "not_installed"; return; }
+        fi
+      fi
+      [ -f "$config_path" ] || { echo "installed_not_configured"; return; }
+      grep -q "font-family = FiraCode Nerd Font" "$config_path" \
+        && echo "installed_configured" \
+        || echo "installed_not_configured"
+      ;;
+    kitty)
+      local config_path="${config_override:-$HOME/.config/kitty/kitty.conf}"
+      if [ -z "$config_override" ]; then
+        if [ "$DOTFILES_OS" = "macos" ]; then
+          [ -d "/Applications/kitty.app" ] || { echo "not_installed"; return; }
+        else
+          command -v kitty >/dev/null 2>&1 || { echo "not_installed"; return; }
+        fi
+      fi
+      [ -f "$config_path" ] || { echo "installed_not_configured"; return; }
+      grep -q "font_family.*FiraCode" "$config_path" \
+        && echo "installed_configured" \
+        || echo "installed_not_configured"
+      ;;
+    vscode)
+      echo "not_installed"  # placeholder — implemented in Task 3
+      ;;
+    iterm2)
+      echo "not_installed"  # placeholder — implemented in Task 4
+      ;;
+  esac
+}
+
 # ── Source-only guard (place after ALL function definitions) ──────────────────
 [ "${FONT_CONFIG_SOURCE_ONLY:-}" = "1" ] && return 0
 

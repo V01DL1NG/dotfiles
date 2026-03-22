@@ -17,6 +17,48 @@ else
   fail "bash -n font-config.sh — syntax error"
 fi
 
+# ── detect_terminal_font_status — Ghostty + Kitty ────────────────────────────
+section "detect_terminal_font_status — Ghostty + Kitty"
+
+FONT_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/font-config.sh"
+
+TMPDIR_TEST="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_TEST"' EXIT
+
+# Ghostty: override points to absent file → installed_not_configured
+status="$(detect_terminal_font_status ghostty "$TMPDIR_TEST/no-such-file")"
+[ "$status" = "installed_not_configured" ] \
+  && pass "ghostty: absent config → installed_not_configured" \
+  || fail "ghostty: absent config → got '$status'"
+
+# Ghostty: config without font line → installed_not_configured
+printf 'theme = dark\n' > "$TMPDIR_TEST/ghostty-no-font.conf"
+status="$(detect_terminal_font_status ghostty "$TMPDIR_TEST/ghostty-no-font.conf")"
+[ "$status" = "installed_not_configured" ] \
+  && pass "ghostty: no font line → installed_not_configured" \
+  || fail "ghostty: no font line → got '$status'"
+
+# Ghostty: config with correct font line → installed_configured
+printf 'font-family = FiraCode Nerd Font\nfont-size = 13\n' > "$TMPDIR_TEST/ghostty-ok.conf"
+status="$(detect_terminal_font_status ghostty "$TMPDIR_TEST/ghostty-ok.conf")"
+[ "$status" = "installed_configured" ] \
+  && pass "ghostty: correct font → installed_configured" \
+  || fail "ghostty: correct font → got '$status'"
+
+# Kitty: config with correct font line → installed_configured
+printf 'font_family      FiraCode Nerd Font\nfont_size 13.0\n' > "$TMPDIR_TEST/kitty-ok.conf"
+status="$(detect_terminal_font_status kitty "$TMPDIR_TEST/kitty-ok.conf")"
+[ "$status" = "installed_configured" ] \
+  && pass "kitty: correct font → installed_configured" \
+  || fail "kitty: correct font → got '$status'"
+
+# Kitty: config without font line → installed_not_configured
+printf 'font_size 13.0\n' > "$TMPDIR_TEST/kitty-no-font.conf"
+status="$(detect_terminal_font_status kitty "$TMPDIR_TEST/kitty-no-font.conf")"
+[ "$status" = "installed_not_configured" ] \
+  && pass "kitty: no font line → installed_not_configured" \
+  || fail "kitty: no font line → got '$status'"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"
