@@ -83,6 +83,42 @@ status="$(detect_terminal_font_status vscode "$TMPDIR_TEST/vscode-ok.json")"
   && pass "vscode: fontFamily = FiraCode → installed_configured" \
   || fail "vscode: fontFamily = FiraCode → got '$status'"
 
+# ── detect_terminal_font_status — iTerm2 (macOS only) ────────────────────────
+section "detect_terminal_font_status — iTerm2"
+
+if [ "$(uname -s)" != "Darwin" ]; then
+  echo "  ! iTerm2 tests skipped (macOS only)"
+else
+  FONT_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/font-config.sh"
+
+  ITERM_MOCK_DIR="$TMPDIR_TEST/DynamicProfiles"
+  mkdir -p "$ITERM_MOCK_DIR"
+
+  # iTerm2: profile with "Normal Font" containing FiraCode → installed_configured
+  printf '{"Profiles": [{"Normal Font": "FiraCodeNFM-Reg 13", "Name": "Velvet"}]}\n' \
+    > "$ITERM_MOCK_DIR/velvet.json"
+  status="$(detect_terminal_font_status iterm2 "$ITERM_MOCK_DIR")"
+  [ "$status" = "installed_configured" ] \
+    && pass "iterm2: profile with FiraCode Normal Font → installed_configured" \
+    || fail "iterm2: profile with FiraCode Normal Font → got '$status'"
+
+  # iTerm2: profile without "Normal Font" key → installed_not_configured
+  rm "$ITERM_MOCK_DIR/velvet.json"
+  printf '{"Profiles": [{"Name": "Plain"}]}\n' \
+    > "$ITERM_MOCK_DIR/plain.json"
+  status="$(detect_terminal_font_status iterm2 "$ITERM_MOCK_DIR")"
+  [ "$status" = "installed_not_configured" ] \
+    && pass "iterm2: profile without FiraCode → installed_not_configured" \
+    || fail "iterm2: profile without FiraCode → got '$status'"
+
+  # iTerm2: empty DynamicProfiles dir → installed_not_configured
+  rm -f "$ITERM_MOCK_DIR"/*.json
+  status="$(detect_terminal_font_status iterm2 "$ITERM_MOCK_DIR")"
+  [ "$status" = "installed_not_configured" ] \
+    && pass "iterm2: empty DynamicProfiles → installed_not_configured" \
+    || fail "iterm2: empty DynamicProfiles → got '$status'"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────"

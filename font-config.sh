@@ -89,7 +89,20 @@ detect_terminal_font_status() {
         || echo "installed_not_configured"
       ;;
     iterm2)
-      echo "not_installed"  # placeholder — implemented in Task 4
+      # iTerm2 is macOS-only
+      [ "$DOTFILES_OS" = "macos" ] || { echo "not_installed"; return; }
+      local profiles_dir="${config_override:-$HOME/Library/Application Support/iTerm2/DynamicProfiles}"
+      if [ -z "$config_override" ]; then
+        [ -d "/Applications/iTerm.app" ] || { echo "not_installed"; return; }
+      fi
+      [ -d "$profiles_dir" ] || { echo "installed_not_configured"; return; }
+      # Check if any profile JSON has "Normal Font" value containing FiraCode
+      if ls "$profiles_dir"/*.json >/dev/null 2>&1 \
+          && grep -ql '"Normal Font".*FiraCode' "$profiles_dir"/*.json 2>/dev/null; then
+        echo "installed_configured"
+      else
+        echo "installed_not_configured"
+      fi
       ;;
   esac
 }
