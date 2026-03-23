@@ -158,7 +158,7 @@ for seg in segments:
             'if [ -n "$_ctx" ]; then',
             '  _ctx_i=$(printf "%.0f" "$_ctx")',
             f'  if [ "$_ctx_i" -le {thr} ]; then _cc="${{{wc}}}"; else _cc="${{{c}}}"; fi',
-            '  parts_out+=("$(printf "$_cc ctx:%s%%${{RESET}}" "$_ctx_i")")',
+            '  parts_out+=("$(printf "$_cc ctx:%s%%${RESET}" "$_ctx_i")")',
             'fi',
             '',
         ]
@@ -173,7 +173,7 @@ for seg in segments:
             'if [ -n "$_5h" ]; then',
             '  _5h_i=$(printf "%.0f" "$_5h")',
             f'  if [ "$_5h_i" -ge {thr} ]; then _5hc="${{{wc}}}"; else _5hc="${{{c}}}"; fi',
-            '  parts_out+=("$(printf "$_5hc 5h:%s%%${{RESET}}" "$_5h_i")")',
+            '  parts_out+=("$(printf "$_5hc 5h:%s%%${RESET}" "$_5h_i")")',
             'fi',
             '',
         ]
@@ -191,7 +191,7 @@ for seg in segments:
             '  _5hl_k=$(( _5hl / 1000 ))',
             '  _5h_tok_pct=$(( _5hu * 100 / _5hl ))',
             f'  if [ "$_5h_tok_pct" -ge {thr} ]; then _5htc="${{{wc}}}"; else _5htc="${{{c}}}"; fi',
-            '  parts_out+=("$(printf "$_5htc 5h:%sk/%sk${{RESET}}" "$_5hu_k" "$_5hl_k")")',
+            '  parts_out+=("$(printf "$_5htc 5h:%sk/%sk${RESET}" "$_5hu_k" "$_5hl_k")")',
             'fi',
             '',
         ]
@@ -210,7 +210,7 @@ for seg in segments:
             '  _wkl_k=$(( _wkl / 1000 ))',
             '  _wkp_i=$(printf "%.0f" "${_wkp:-0}")',
             f'  if [ "$_wkp_i" -ge {thr} ]; then _wkc="${{{wc}}}"; else _wkc="${{{c}}}"; fi',
-            '  parts_out+=("$(printf "$_wkc wk:%sk/%sk${{RESET}}" "$_wku_k" "$_wkl_k")")',
+            '  parts_out+=("$(printf "$_wkc wk:%sk/%sk${RESET}" "$_wku_k" "$_wkl_k")")',
             'fi',
             '',
         ]
@@ -223,10 +223,10 @@ for seg in segments:
             'if [ -n "$_rst5" ]; then',
             '  _rst5_fmt=$(python3 -c "',
             'import datetime,sys',
-            't=datetime.datetime.fromisoformat(sys.argv[1].replace(\"Z\",\"+00:00\"))',
+            r't=datetime.datetime.fromisoformat(sys.argv[1].replace(\"Z\",\"+00:00\"))',
             'now=datetime.datetime.now(datetime.timezone.utc)',
             'd=int((t-now).total_seconds()/60)',
-            'print(str(d)+\"m\" if d>0 else \"now\")',
+            r'print(str(d)+\"m\" if d>0 else \"now\")',
             '" "$_rst5" 2>/dev/null || echo "$_rst5")',
             f'  parts_out+=("$(printf "${{{c}}} rst:%s${{RESET}}" "$_rst5_fmt")")',
             'fi',
@@ -241,10 +241,10 @@ for seg in segments:
             'if [ -n "$_rstwk" ]; then',
             '  _rstwk_fmt=$(python3 -c "',
             'import datetime,sys',
-            't=datetime.datetime.fromisoformat(sys.argv[1].replace(\"Z\",\"+00:00\"))',
+            r't=datetime.datetime.fromisoformat(sys.argv[1].replace(\"Z\",\"+00:00\"))',
             'now=datetime.datetime.now(datetime.timezone.utc)',
             'd=int((t-now).total_seconds()/86400)',
-            'print(str(d)+\"d\" if d>0 else \"today\")',
+            r'print(str(d)+\"d\" if d>0 else \"today\")',
             '" "$_rstwk" 2>/dev/null || echo "$_rstwk")',
             f'  parts_out+=("$(printf "${{{c}}} rst-wk:%s${{RESET}}" "$_rstwk_fmt")")',
             'fi',
@@ -279,7 +279,7 @@ for seg in segments:
             f'    auto) _modec="${{{ac}}}" ;;',
             f'    *)    _modec="${{{nc}}}" ;;',
             '  esac',
-            '  parts_out+=("$(printf "$_modec %s${{RESET}}" "$_mode")")',
+            '  parts_out+=("$(printf "$_modec %s${RESET}" "$_mode")")',
             'fi',
             '',
         ]
@@ -325,33 +325,29 @@ print('\n'.join(c['segments']))
 PYEOF
 )
 
-  local choices=""
-  for seg in $all_segs; do
-    if echo "$enabled" | grep -qx "$seg"; then
-      choices+="[on]  $seg\n"
-    else
-      choices+="[off] $seg\n"
-    fi
-  done
+  # Build fzf start binding to pre-select currently enabled segments
+  local start_binding=""
+  while IFS= read -r seg; do
+    [ -z "$seg" ] && continue
+    [ -n "$start_binding" ] && start_binding+="+"
+    start_binding+="select($seg)"
+  done <<< "$enabled"
 
   local selected
-  selected=$(printf "%b" "$choices" | fzf --multi \
-    --header="Space=toggle  Enter=confirm  Esc=keep current" \
+  selected=$(printf '%s\n' $all_segs | fzf --multi \
+    --header="Highlighted = enabled  |  Tab/Space=toggle  Enter=confirm  Esc=cancel" \
     --prompt="Segments > " \
-    --bind="tab:toggle") || { info "Segment selection cancelled — keeping current"; return 1; }
+    ${start_binding:+--bind "start:$start_binding"}) || { info "Segment selection cancelled — keeping current"; return 1; }
 
   if [ -z "$selected" ]; then
     info "No segments selected — keeping current"
     return 1
   fi
 
-  # Extract names from selections
+  # Collect selected segment names
   local new_segs=()
-  while IFS= read -r line; do
-    local name="${line#\[on\]  }"
-    name="${name#\[off\] }"
-    name="${name## }"
-    new_segs+=("$name")
+  while IFS= read -r seg; do
+    [ -n "$seg" ] && new_segs+=("$seg")
   done <<< "$selected"
 
   # Reorder loop — pick next segment in desired order
