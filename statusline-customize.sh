@@ -325,16 +325,27 @@ print('\n'.join(c['segments']))
 PYEOF
 )
 
-  # Build fzf start binding to pre-select currently enabled segments
+  # Sort: currently enabled first, then disabled — allows positional pre-selection
+  local sorted_segs=()
+  for seg in $all_segs; do
+    echo "$enabled" | grep -qx "$seg" && sorted_segs+=("$seg")
+  done
+  for seg in $all_segs; do
+    echo "$enabled" | grep -qx "$seg" || sorted_segs+=("$seg")
+  done
+
+  local n_enabled
+  n_enabled=$(echo "$enabled" | grep -c . 2>/dev/null || echo 0)
+
+  # Build start binding: pos(N)+select for each of the first n_enabled items
   local start_binding=""
-  while IFS= read -r seg; do
-    [ -z "$seg" ] && continue
+  for i in $(seq 1 "$n_enabled"); do
     [ -n "$start_binding" ] && start_binding+="+"
-    start_binding+="select($seg)"
-  done <<< "$enabled"
+    start_binding+="pos($i)+select"
+  done
 
   local selected
-  selected=$(printf '%s\n' $all_segs | fzf --multi \
+  selected=$(printf '%s\n' "${sorted_segs[@]}" | fzf --multi \
     --header="Highlighted = enabled  |  Tab/Space=toggle  Enter=confirm  Esc=cancel" \
     --prompt="Segments > " \
     ${start_binding:+--bind "start:$start_binding"}) || { info "Segment selection cancelled — keeping current"; return 1; }
