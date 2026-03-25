@@ -4,7 +4,6 @@
 #
 # Copies config files locally (no symlinks) so each user can freely edit
 # their own copy without touching the repo.
-#
 # Usage:
 #   ./choose-profile.sh              # interactive picker
 #   ./choose-profile.sh velvet       # install a specific profile directly

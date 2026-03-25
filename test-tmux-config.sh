@@ -64,63 +64,63 @@ DISABLED=(smart_scroll nowplaying border_labels)
 declare -A VARIANTS=([prefix]="C-b" [border_style]="double" [statusbar_style]="themed" [scrollback]="10000" [copy_cmd]="pbcopy" [clock_pos]="right")
 DRY_RUN=true; DOTFILES_OS="macos"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "set -g prefix C-b" && pass "prefix C-b: override written" || fail "prefix C-b: override missing"
-echo "$out" | grep -q "unbind C-a" && pass "prefix C-b: unbind C-a written" || fail "prefix C-b: unbind C-a missing"
+if echo "$out" | grep -q "set -g prefix C-b"; then pass "prefix C-b: override written"; else fail "prefix C-b: override missing"; fi
+if echo "$out" | grep -q "unbind C-a"; then pass "prefix C-b: unbind C-a written"; else fail "prefix C-b: unbind C-a missing"; fi
 
 # Test: prefix Ctrl+a (default) — no prefix lines
 VARIANTS[prefix]="C-a"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "set -g prefix" && fail "prefix C-a: should not write prefix override" || pass "prefix C-a: no override written"
+if echo "$out" | grep -q "set -g prefix"; then fail "prefix C-a: should not write prefix override"; else pass "prefix C-a: no override written"; fi
 
 # Test: mouse disabled
 ENABLED=()
 DISABLED=(mouse smart_scroll nowplaying border_labels)
 VARIANTS[prefix]="C-a"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "set -g mouse off" && pass "mouse disabled: written" || fail "mouse disabled: missing"
+if echo "$out" | grep -q "set -g mouse off"; then pass "mouse disabled: written"; else fail "mouse disabled: missing"; fi
 
 # Test: vim nav disabled
 DISABLED=(vim_nav smart_scroll nowplaying border_labels)
 ENABLED=(mouse vi_copy clipboard clock persistence)
 out="$(_test_local_conf)"
-echo "$out" | grep -q "unbind h" && pass "vim nav disabled: unbind written" || fail "vim nav disabled: unbind missing"
+if echo "$out" | grep -q "unbind h"; then pass "vim nav disabled: unbind written"; else fail "vim nav disabled: unbind missing"; fi
 
 # Test: scrollback 50000
 ENABLED=(mouse vim_nav vi_copy clipboard clock persistence)
 DISABLED=(smart_scroll nowplaying border_labels)
 VARIANTS[scrollback]="50000"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "history-limit 50000" && pass "scrollback 50000: written" || fail "scrollback 50000: missing"
+if echo "$out" | grep -q "history-limit 50000"; then pass "scrollback 50000: written"; else fail "scrollback 50000: missing"; fi
 
 # Test: scrollback 0 (unlimited)
 VARIANTS[scrollback]="0"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "history-limit 0" && pass "scrollback unlimited: written" || fail "scrollback unlimited: missing"
+if echo "$out" | grep -q "history-limit 0"; then pass "scrollback unlimited: written"; else fail "scrollback unlimited: missing"; fi
 
 # Test: scrollback 10000 (default) — no override
 VARIANTS[scrollback]="10000"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "history-limit" && fail "scrollback 10000: should not write override" || pass "scrollback 10000: no override"
+if echo "$out" | grep -q "history-limit"; then fail "scrollback 10000: should not write override"; else pass "scrollback 10000: no override"; fi
 
 # Test: border style single
 VARIANTS[border_style]="single"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "pane-border-lines single" && pass "border single: written" || fail "border single: missing"
+if echo "$out" | grep -q "pane-border-lines single"; then pass "border single: written"; else fail "border single: missing"; fi
 
 # Test: border style heavy
 VARIANTS[border_style]="heavy"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "pane-border-lines heavy" && pass "border heavy: written" || fail "border heavy: missing"
+if echo "$out" | grep -q "pane-border-lines heavy"; then pass "border heavy: written"; else fail "border heavy: missing"; fi
 
 # Test: border style double (default) — no override
 VARIANTS[border_style]="double"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "pane-border-lines" && fail "border double: should not write override" || pass "border double: no override"
+if echo "$out" | grep -q "pane-border-lines"; then fail "border double: should not write override"; else pass "border double: no override"; fi
 
 # Test: border labels disabled
 DISABLED=(border_labels smart_scroll nowplaying)
 out="$(_test_local_conf)"
-echo "$out" | grep -q "pane-border-status off" && pass "border labels disabled: written" || fail "border labels disabled: missing"
+if echo "$out" | grep -q "pane-border-status off"; then pass "border labels disabled: written"; else fail "border labels disabled: missing"; fi
 
 # Test: Linux clipboard always written (override pbcopy from base)
 DOTFILES_OS="linux"
@@ -129,14 +129,14 @@ DISABLED=(smart_scroll nowplaying border_labels)
 VARIANTS[copy_cmd]="xclip"
 VARIANTS[border_style]="double"; VARIANTS[scrollback]="10000"; VARIANTS[prefix]="C-a"
 out="$(_test_local_conf)"
-echo "$out" | grep -q "xclip" && pass "linux: clipboard written with xclip" || fail "linux: xclip missing"
+if echo "$out" | grep -q "xclip"; then pass "linux: clipboard written with xclip"; else fail "linux: xclip missing"; fi
 
 # Test: clipboard disabled
 DOTFILES_OS="macos"
 DISABLED=(clipboard smart_scroll nowplaying border_labels)
 ENABLED=(mouse vim_nav vi_copy clock persistence)
 out="$(_test_local_conf)"
-echo "$out" | grep -q "unbind -T copy-mode-vi y" && pass "clipboard disabled: unbind written" || fail "clipboard disabled: unbind missing"
+if echo "$out" | grep -q "unbind -T copy-mode-vi y"; then pass "clipboard disabled: unbind written"; else fail "clipboard disabled: unbind missing"; fi
 
 # ── write_local_conf — status bar ─────────────────────────────────────────────
 section "write_local_conf: status bar"
@@ -160,57 +160,57 @@ _sb() {
 # Minimal style
 VARIANTS[statusbar_style]="minimal"
 out="$(_sb)"
-echo "$out" | grep -q 'status-left " #S "' && pass "minimal: plain status-left" || fail "minimal: plain status-left missing"
-echo "$out" | grep -q 'status-right " %H:%M "' && pass "minimal: plain status-right" || fail "minimal: plain status-right missing"
+if echo "$out" | grep -q 'status-left " #S "'; then pass "minimal: plain status-left"; else fail "minimal: plain status-left missing"; fi
+if echo "$out" | grep -q 'status-right " %H:%M "'; then pass "minimal: plain status-right"; else fail "minimal: plain status-right missing"; fi
 
 # Both right (base default) — no status bar override written
 declare -A VARIANTS=()
 VARIANTS[nowplaying_pos]="right"; VARIANTS[clock_pos]="right"
 out="$(_sb nowplaying)"
-echo "$out" | grep -q "status-left " && fail "both right: should not write status-bar override" || pass "both right: no override"
+if echo "$out" | grep -q "status-left "; then fail "both right: should not write status-bar override"; else pass "both right: no override"; fi
 
 # Now-playing left, clock right
 VARIANTS[nowplaying_pos]="left"
 out="$(_sb nowplaying)"
-echo "$out" | grep -q 'now-playing.sh' && pass "np-left: now-playing in status-left" || fail "np-left: now-playing missing from status-left"
-echo "$out" | grep -q '%H:%M' && pass "np-left: clock present" || fail "np-left: clock missing"
+if echo "$out" | grep -q 'now-playing.sh'; then pass "np-left: now-playing in status-left"; else fail "np-left: now-playing missing from status-left"; fi
+if echo "$out" | grep -q '%H:%M'; then pass "np-left: clock present"; else fail "np-left: clock missing"; fi
 
 # Now-playing right, clock left
 VARIANTS[nowplaying_pos]="right"; VARIANTS[clock_pos]="left"
 out="$(_sb nowplaying)"
-echo "$out" | grep -q '%H:%M' && pass "clock-left: clock present in output" || fail "clock-left: clock missing"
+if echo "$out" | grep -q '%H:%M'; then pass "clock-left: clock present in output"; else fail "clock-left: clock missing"; fi
 
 # Both left
 VARIANTS[nowplaying_pos]="left"; VARIANTS[clock_pos]="left"
 out="$(_sb nowplaying)"
-echo "$out" | grep -q 'status-right ""' && pass "both-left: status-right cleared" || fail "both-left: status-right not cleared"
+if echo "$out" | grep -q 'status-right ""'; then pass "both-left: status-right cleared"; else fail "both-left: status-right not cleared"; fi
 
 # Nowplaying disabled, clock right (default)
 declare -A VARIANTS=()
 VARIANTS[nowplaying_pos]="right"; VARIANTS[clock_pos]="right"
 out="$(_sb)"
-echo "$out" | grep -q 'now-playing.sh' && fail "np-off clock-right: now-playing should be absent" || pass "np-off clock-right: now-playing absent"
-echo "$out" | grep -q '%H:%M' && pass "np-off clock-right: clock present" || fail "np-off clock-right: clock missing"
+if echo "$out" | grep -q 'now-playing.sh'; then fail "np-off clock-right: now-playing should be absent"; else pass "np-off clock-right: now-playing absent"; fi
+if echo "$out" | grep -q '%H:%M'; then pass "np-off clock-right: clock present"; else fail "np-off clock-right: clock missing"; fi
 
 # Nowplaying disabled, clock left
 VARIANTS[clock_pos]="left"
 out="$(_sb)"
-echo "$out" | grep -q '%H:%M' && pass "np-off clock-left: clock present" || fail "np-off clock-left: clock missing"
-echo "$out" | grep -q 'status-right ""' && pass "np-off clock-left: status-right cleared" || fail "np-off clock-left: status-right not cleared"
+if echo "$out" | grep -q '%H:%M'; then pass "np-off clock-left: clock present"; else fail "np-off clock-left: clock missing"; fi
+if echo "$out" | grep -q 'status-right ""'; then pass "np-off clock-left: status-right cleared"; else fail "np-off clock-left: status-right not cleared"; fi
 
 # ── fzf fallback presets ──────────────────────────────────────────────────────
 section "fzf fallback: preset key mappings"
 
 ENABLED=(); DISABLED=()
 _apply_preset "full"
-is_enabled "mouse"       && pass "full preset: mouse enabled"  || fail "full preset: mouse disabled"
-is_enabled "persistence" && pass "full preset: persistence enabled" || fail "full preset: persistence missing"
+if is_enabled "mouse"; then pass "full preset: mouse enabled"; else fail "full preset: mouse disabled"; fi
+if is_enabled "persistence"; then pass "full preset: persistence enabled"; else fail "full preset: persistence missing"; fi
 
 ENABLED=(); DISABLED=()
 _apply_preset "minimal"
-is_enabled "mouse"        && pass "minimal preset: mouse enabled"  || fail "minimal preset: mouse disabled"
-is_enabled "persistence"  && fail "minimal preset: persistence should be disabled" || pass "minimal preset: persistence disabled"
-is_enabled "border_labels" && fail "minimal preset: border_labels should be disabled" || pass "minimal preset: border_labels disabled"
+if is_enabled "mouse"; then pass "minimal preset: mouse enabled"; else fail "minimal preset: mouse disabled"; fi
+if is_enabled "persistence"; then fail "minimal preset: persistence should be disabled"; else pass "minimal preset: persistence disabled"; fi
+if is_enabled "border_labels"; then fail "minimal preset: border_labels should be disabled"; else pass "minimal preset: border_labels disabled"; fi
 
 # ── variant_stage defaults ────────────────────────────────────────────────────
 section "variant_stage: defaults"
@@ -222,13 +222,13 @@ section "variant_stage: defaults"
 # calling _set_variant_defaults directly.
 declare -A VARIANTS=()
 _set_variant_defaults
-[ "${VARIANTS[prefix]:-}" = "C-a" ] && pass "default prefix C-a" || fail "default prefix not C-a: ${VARIANTS[prefix]:-unset}"
-[ "${VARIANTS[border_style]:-}" = "double" ] && pass "default border double" || fail "default border: ${VARIANTS[border_style]:-unset}"
-[ "${VARIANTS[statusbar_style]:-}" = "themed" ] && pass "default statusbar themed" || fail "default statusbar: ${VARIANTS[statusbar_style]:-unset}"
-[ "${VARIANTS[scrollback]:-}" = "10000" ] && pass "default scrollback 10000" || fail "default scrollback: ${VARIANTS[scrollback]:-unset}"
-[ "${VARIANTS[copy_cmd]:-}" = "auto" ] && pass "default copy_cmd auto" || fail "default copy_cmd: ${VARIANTS[copy_cmd]:-unset}"
-[ "${VARIANTS[clock_pos]:-}" = "right" ] && pass "default clock_pos right" || fail "default clock_pos: ${VARIANTS[clock_pos]:-unset}"
-[ "${VARIANTS[nowplaying_pos]:-}" = "right" ] && pass "default nowplaying_pos right" || fail "default nowplaying_pos: ${VARIANTS[nowplaying_pos]:-unset}"
+if [ "${VARIANTS[prefix]:-}" = "C-a" ]; then pass "default prefix C-a"; else fail "default prefix not C-a: ${VARIANTS[prefix]:-unset}"; fi
+if [ "${VARIANTS[border_style]:-}" = "double" ]; then pass "default border double"; else fail "default border: ${VARIANTS[border_style]:-unset}"; fi
+if [ "${VARIANTS[statusbar_style]:-}" = "themed" ]; then pass "default statusbar themed"; else fail "default statusbar: ${VARIANTS[statusbar_style]:-unset}"; fi
+if [ "${VARIANTS[scrollback]:-}" = "10000" ]; then pass "default scrollback 10000"; else fail "default scrollback: ${VARIANTS[scrollback]:-unset}"; fi
+if [ "${VARIANTS[copy_cmd]:-}" = "auto" ]; then pass "default copy_cmd auto"; else fail "default copy_cmd: ${VARIANTS[copy_cmd]:-unset}"; fi
+if [ "${VARIANTS[clock_pos]:-}" = "right" ]; then pass "default clock_pos right"; else fail "default clock_pos: ${VARIANTS[clock_pos]:-unset}"; fi
+if [ "${VARIANTS[nowplaying_pos]:-}" = "right" ]; then pass "default nowplaying_pos right"; else fail "default nowplaying_pos: ${VARIANTS[nowplaying_pos]:-unset}"; fi
 
 # ── end-to-end: dry-run output ────────────────────────────────────────────────
 section "end-to-end dry-run"
@@ -250,8 +250,8 @@ write_plugins_conf >/dev/null 2>&1 || true
 after_local="$(cat "$HOME/.tmux.conf.local" 2>/dev/null | md5 || echo 'absent')"
 after_plugins="$(cat "$HOME/.tmux.conf.plugins" 2>/dev/null | md5 || echo 'absent')"
 
-[ "$before_local" = "$after_local" ] && pass "dry-run: ~/.tmux.conf.local unchanged" || fail "dry-run: ~/.tmux.conf.local was modified!"
-[ "$before_plugins" = "$after_plugins" ] && pass "dry-run: ~/.tmux.conf.plugins unchanged" || fail "dry-run: ~/.tmux.conf.plugins was modified!"
+if [ "$before_local" = "$after_local" ]; then pass "dry-run: ~/.tmux.conf.local unchanged"; else fail "dry-run: ~/.tmux.conf.local was modified!"; fi
+if [ "$before_plugins" = "$after_plugins" ]; then pass "dry-run: ~/.tmux.conf.plugins unchanged"; else fail "dry-run: ~/.tmux.conf.plugins was modified!"; fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""

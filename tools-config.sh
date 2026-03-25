@@ -7,8 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Install terminal productivity tools
 
-echo "Installing terminal tools via $PKG_MGR..."
-
 # Required tools — always available on all supported package managers
 $PKG_INSTALL "$(pkg fzf)"
 $PKG_INSTALL "$(pkg bat)"
@@ -34,6 +32,19 @@ _p="$(pkg lazygit)"; [ -n "$_p" ] && $PKG_INSTALL "$_p" || echo "Skipping lazygi
 # fzf installs keybindings and completion separately
 if command -v fzf >/dev/null 2>&1; then
   echo "fzf keybindings will be loaded via .zshrc"
+fi
+
+# atuin sync setup — configure if ATUIN_KEY is present in the environment
+# To enable cross-machine history sync:
+#   1. Register: atuin register -u <user> -e <email> -p <password>
+#   OR log in:   atuin login -u <user> -p <password>
+#   2. Add to roles/secrets.zsh: export ATUIN_KEY="$(secret atuin-key)"
+#   Sync runs automatically in the background on shell start (see zshrc).
+if command -v atuin >/dev/null 2>&1; then
+  echo ""
+  echo "atuin installed. To enable cross-machine history sync:"
+  echo "  atuin register -u <username> -e <email> -p <password>"
+  echo "  Then add ATUIN_KEY to roles/secrets.zsh"
 fi
 
 echo ""

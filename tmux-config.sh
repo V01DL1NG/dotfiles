@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 . "$SCRIPT_DIR/platform.sh"
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
@@ -509,6 +509,7 @@ variant_stage() {
   # Clock position (only if clock enabled)
   if is_enabled "clock"; then
     PS3="  Clock position: "
+    # shellcheck disable=SC2034  # select var, used via $REPLY
     select choice in "Right side (current)" "Left side"; do
       case "$REPLY" in
         1) VARIANTS[clock_pos]="right"; break ;;

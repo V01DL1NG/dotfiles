@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=false
 
 # ── Platform ──────────────────────────────────────────────────────────────────
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 source "$SCRIPT_DIR/platform.sh"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -17,7 +17,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 RESET='\033[0m'
-
 info()    { echo -e "  ${LAVENDER}${1}${RESET}"; }
 success() { echo -e "  ${GREEN}✓${RESET}  ${1}"; }
 warn()    { echo -e "  ${YELLOW}!${RESET}  ${1}"; }
@@ -100,25 +99,27 @@ detect_terminal_font_status() {
       if ls "$profiles_dir"/*.json >/dev/null 2>&1 \
           && grep -ql '"Normal Font".*FiraCode' "$profiles_dir"/*.json 2>/dev/null; then
         echo "installed_configured"
-      else
-        echo "installed_not_configured"
-      fi
-      ;;
-  esac
+       else
+         echo "installed_not_configured"
+       fi
+       ;;
+     esac
 }
 
 # ── _font_file_present ────────────────────────────────────────────────────────
 _font_file_present() {
   if [ "$DOTFILES_OS" = "macos" ]; then
-    ls ~/Library/Fonts/FiraCode*.ttf \
-       ~/Library/Fonts/FiraCodeNerdFont*.ttf \
-       /Library/Fonts/FiraCode*.ttf \
-       2>/dev/null | grep -q . && return 0
+    for font in ~/Library/Fonts/FiraCode*.ttf \
+                 ~/Library/Fonts/FiraCodeNerdFont*.ttf \
+                 /Library/Fonts/FiraCode*.ttf; do
+      [ -e "$font" ] && return 0
+    done
   else
-    ls ~/.local/share/fonts/FiraCode*.ttf \
-       ~/.local/share/fonts/FiraCodeNerdFont*.ttf \
-       /usr/share/fonts/truetype/firacode/FiraCode*.ttf \
-       2>/dev/null | grep -q . && return 0
+    for font in ~/.local/share/fonts/FiraCode*.ttf \
+                 ~/.local/share/fonts/FiraCodeNerdFont*.ttf \
+                 /usr/share/fonts/truetype/firacode/FiraCode*.ttf; do
+      [ -e "$font" ] && return 0
+    done
   fi
   return 1
 }

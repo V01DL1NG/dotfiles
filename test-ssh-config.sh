@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # test-ssh-config.sh — test suite for ssh-config.sh (macOS only)
+# shellcheck disable=SC2031  # SCRIPT_DIR false positive: set via $() at top level
 
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "  ! test-ssh-config.sh skipped (macOS only)"
   exit 0
 fi
 
+# shellcheck disable=SC2031  # SCRIPT_DIR set via $() — SC2031 false positive
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PASS=0; FAIL=0
 
@@ -28,6 +30,7 @@ fi
 
 section "generate_ssh_config (source-only)"
 
+# shellcheck disable=SC1091  # ssh-config.sh not specified as input
 SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
 
 if declare -f generate_ssh_config >/dev/null 2>&1; then
@@ -44,6 +47,7 @@ section "generate_ssh_config — auth methods"
 _run_gen() {
   local method="$1"
   # Re-source to get a clean function context
+  # shellcheck disable=SC1091  # ssh-config.sh not specified as input
   SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
   AUTH_METHOD="$method"
   ENABLED=(multiplexing hash_known_hosts)
@@ -55,36 +59,22 @@ _run_gen() {
 
 # 1Password mode
 out="$(_run_gen 1password)"
-echo "$out" | grep -q 'IdentityAgent "~/.1password/agent.sock"' \
-  && pass "1password: IdentityAgent present" \
-  || fail "1password: IdentityAgent missing"
-! echo "$out" | grep -q 'IdentityFile' \
-  && pass "1password: no IdentityFile" \
-  || fail "1password: IdentityFile should not be present"
+if echo "$out" | grep -q 'IdentityAgent "~/.1password/agent.sock"'; then pass "1password: IdentityAgent present"; else fail "1password: IdentityAgent missing"; fi
+if ! echo "$out" | grep -q 'IdentityFile'; then pass "1password: no IdentityFile"; else fail "1password: IdentityFile should not be present"; fi
 
 # File-based mode
 out="$(_run_gen file)"
-echo "$out" | grep -q 'IdentityFile' \
-  && pass "file: IdentityFile present" \
-  || fail "file: IdentityFile missing"
-! echo "$out" | grep -q 'IdentityAgent' \
-  && pass "file: no IdentityAgent" \
-  || fail "file: IdentityAgent should not be present"
+if echo "$out" | grep -q 'IdentityFile'; then pass "file: IdentityFile present"; else fail "file: IdentityFile missing"; fi
+if ! echo "$out" | grep -q 'IdentityAgent'; then pass "file: no IdentityAgent"; else fail "file: IdentityAgent should not be present"; fi
 
 # Fallback mode
 out="$(_run_gen fallback)"
-echo "$out" | grep -q 'IdentityAgent "~/.1password/agent.sock"' \
-  && pass "fallback: IdentityAgent present" \
-  || fail "fallback: IdentityAgent missing"
-echo "$out" | grep -q 'IdentityFile' \
-  && pass "fallback: IdentityFile present" \
-  || fail "fallback: IdentityFile missing"
+if echo "$out" | grep -q 'IdentityAgent "~/.1password/agent.sock"'; then pass "fallback: IdentityAgent present"; else fail "fallback: IdentityAgent missing"; fi
+if echo "$out" | grep -q 'IdentityFile'; then pass "fallback: IdentityFile present"; else fail "fallback: IdentityFile missing"; fi
 
 # Auth method header comment
 out="$(_run_gen 1password)"
-echo "$out" | grep -q '# Auth method: 1password' \
-  && pass "header comment includes auth method" \
-  || fail "header comment missing auth method"
+if echo "$out" | grep -q '# Auth method: 1password'; then pass "header comment includes auth method"; else fail "header comment missing auth method"; fi
 
 # ── generate_ssh_config — connection settings ─────────────────────────────────
 
@@ -93,6 +83,7 @@ section "generate_ssh_config — connection settings"
 # Helper: run generate_ssh_config with given feature/variant settings
 _gen_with() {
   local method="$1" enabled_csv="$2" keepalive="$3" cp="$4"
+  # shellcheck disable=SC1091  # ssh-config.sh not specified as input
   SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
   AUTH_METHOD="$method"
   IFS=',' read -r -a ENABLED <<< "$enabled_csv"
@@ -104,45 +95,29 @@ _gen_with() {
 
 # Multiplexing on
 out="$(_gen_with fallback "multiplexing,hash_known_hosts" "60" "600")"
-echo "$out" | grep -q 'ControlMaster auto' \
-  && pass "mux on: ControlMaster present" \
-  || fail "mux on: ControlMaster missing"
-echo "$out" | grep -q 'ControlPath' \
-  && pass "mux on: ControlPath present" \
-  || fail "mux on: ControlPath missing"
-echo "$out" | grep -q 'ControlPersist 600' \
-  && pass "mux on: ControlPersist 600" \
-  || fail "mux on: ControlPersist wrong"
+if echo "$out" | grep -q 'ControlMaster auto'; then pass "mux on: ControlMaster present"; else fail "mux on: ControlMaster missing"; fi
+if echo "$out" | grep -q 'ControlPath'; then pass "mux on: ControlPath present"; else fail "mux on: ControlPath missing"; fi
+if echo "$out" | grep -q 'ControlPersist 600'; then pass "mux on: ControlPersist 600"; else fail "mux on: ControlPersist wrong"; fi
 
 # Multiplexing off
 out="$(_gen_with fallback "hash_known_hosts" "60" "600")"
-! echo "$out" | grep -q 'ControlMaster' \
-  && pass "mux off: no ControlMaster" \
-  || fail "mux off: ControlMaster should not appear"
+if ! echo "$out" | grep -q 'ControlMaster'; then pass "mux off: no ControlMaster"; else fail "mux off: ControlMaster should not appear"; fi
 
 # HashKnownHosts on
 out="$(_gen_with fallback "multiplexing,hash_known_hosts" "60" "600")"
-echo "$out" | grep -q 'HashKnownHosts yes' \
-  && pass "hash on: HashKnownHosts yes" \
-  || fail "hash on: HashKnownHosts missing"
+if echo "$out" | grep -q 'HashKnownHosts yes'; then pass "hash on: HashKnownHosts yes"; else fail "hash on: HashKnownHosts missing"; fi
 
 # HashKnownHosts off
 out="$(_gen_with fallback "multiplexing" "60" "600")"
-! echo "$out" | grep -q 'HashKnownHosts' \
-  && pass "hash off: no HashKnownHosts" \
-  || fail "hash off: HashKnownHosts should not appear"
+if ! echo "$out" | grep -q 'HashKnownHosts'; then pass "hash off: no HashKnownHosts"; else fail "hash off: HashKnownHosts should not appear"; fi
 
 # Keepalive interval 30
 out="$(_gen_with fallback "multiplexing" "30" "600")"
-echo "$out" | grep -q 'ServerAliveInterval 30' \
-  && pass "keepalive: interval 30" \
-  || fail "keepalive: interval wrong"
+if echo "$out" | grep -q 'ServerAliveInterval 30'; then pass "keepalive: interval 30"; else fail "keepalive: interval wrong"; fi
 
 # Keepalive disabled
 out="$(_gen_with fallback "multiplexing" "no" "600")"
-! echo "$out" | grep -q 'ServerAliveInterval' \
-  && pass "keepalive disabled: no ServerAliveInterval" \
-  || fail "keepalive disabled: ServerAliveInterval should not appear"
+if ! echo "$out" | grep -q 'ServerAliveInterval'; then pass "keepalive disabled: no ServerAliveInterval"; else fail "keepalive disabled: ServerAliveInterval should not appear"; fi
 
 # ── --dry-run output ─────────────────────────────────────────────────────────
 
@@ -153,23 +128,26 @@ section "--dry-run output"
 # stage_write in dry-run mode prints config content without writing files.
 # We use pre-set env vars via SSH_CONFIG_SOURCE_ONLY to test the output directly.
 dry_out="$(
+  # shellcheck disable=SC1091  # ssh-config.sh not specified as input
   SSH_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/ssh-config.sh"
+  # shellcheck disable=SC2034  # vars used by sourced script
   AUTH_METHOD="fallback"
+  # shellcheck disable=SC2034
   ENABLED=(multiplexing hash_known_hosts)
+  # shellcheck disable=SC2034
   DISABLED=()
+  # shellcheck disable=SC2034
   declare -gA VARIANTS=([keepalive]="60" [control_persist]="600")
+  # shellcheck disable=SC2034
   KEYGEN_PATH=""
+  # shellcheck disable=SC2034
   DRY_RUN=true
   stage_write
 )" 2>/dev/null || true
 
-echo "$dry_out" | grep -q 'generated by ssh-config.sh' \
-  && pass "--dry-run: config header present in output" \
-  || fail "--dry-run: config header missing from output"
+if echo "$dry_out" | grep -q 'generated by ssh-config.sh'; then pass "--dry-run: config header present in output"; else fail "--dry-run: config header missing from output"; fi
 
-echo "$dry_out" | grep -q 'dry-run mode' \
-  && pass "--dry-run: dry-run notice present" \
-  || fail "--dry-run: dry-run notice missing"
+if echo "$dry_out" | grep -q 'dry-run mode'; then pass "--dry-run: dry-run notice present"; else fail "--dry-run: dry-run notice missing"; fi
 
 if echo "" | bash "$SCRIPT_DIR/ssh-config.sh" --dry-run >/dev/null 2>&1; then
   pass "--dry-run exits 0 (non-interactive)"

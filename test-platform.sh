@@ -13,9 +13,11 @@ section() { echo ""; echo "── $1"; }
 source_platform() {
   local force_os="${1:-}" force_pm="${2:-}"
   (
+    # shellcheck disable=SC2030  # intentional subshell for test isolation
     export _DOTFILES_FORCE_OS="$force_os"
+    # shellcheck disable=SC2030
     export _DOTFILES_FORCE_PKG_MGR="$force_pm"
-    # shellcheck source=platform.sh
+    # shellcheck disable=SC1091  # platform.sh not passed as input
     . "$SCRIPT_DIR/platform.sh"
     printf 'OS=%s PKG_MGR=%s\n' "$DOTFILES_OS" "$PKG_MGR"
     printf 'PKG_INSTALL=%s\n' "$PKG_INSTALL"
@@ -40,8 +42,11 @@ test_sed_inplace() {
   tmpfile="$(mktemp)"
   echo "hello world" > "$tmpfile"
   (
+    # shellcheck disable=SC2030,SC2031  # intentional subshell
     export _DOTFILES_FORCE_OS="$force_os"
+    # shellcheck disable=SC2030,SC2031
     export _DOTFILES_FORCE_PKG_MGR="brew"
+    # shellcheck disable=SC1091
     . "$SCRIPT_DIR/platform.sh"
     sed_inplace 's/hello/goodbye/' "$tmpfile"
   )
@@ -50,7 +55,7 @@ test_sed_inplace() {
   rm -f "$tmpfile"
   # no backup files created
   local backups
-  backups="$(ls "${tmpfile}"* 2>/dev/null | wc -l | tr -d ' ')"
+  backups="$(find "${tmpfile}"* 2>/dev/null | wc -l | tr -d ' ')"
   printf '%s\n' "$result" "$backups"
 }
 
@@ -58,8 +63,11 @@ test_sed_inplace() {
 pkg_result() {
   local force_pm="$1" name="$2"
   (
+    # shellcheck disable=SC2031  # intentional subshell
     export _DOTFILES_FORCE_OS="linux-server"
+    # shellcheck disable=SC2031
     export _DOTFILES_FORCE_PKG_MGR="$force_pm"
+    # shellcheck disable=SC1091
     . "$SCRIPT_DIR/platform.sh"
     pkg "$name"
   )

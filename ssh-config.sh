@@ -13,12 +13,11 @@ if [ "$(uname -s)" != "Darwin" ]; then
 fi
 
 # ── Platform ──────────────────────────────────────────────────────────────────
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 source "$SCRIPT_DIR/platform.sh"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
-DIM='\033[2m'
 PURPLE='\033[38;2;105;48;122m'
 LAVENDER='\033[38;2;239;220;249m'
 GREEN='\033[0;32m'
@@ -127,28 +126,35 @@ cmd_status() {
 
   # 1. Symlink check
   if [ -L "$HOME/.ssh/config" ] && [ "$(readlink "$HOME/.ssh/config")" = "$SSH_CONFIG_FILE" ]; then
+    # shellcheck disable=SC2088  # ~ in display string is intentional
     success "~/.ssh/config → ${SSH_CONFIG_FILE}"
   else
+    # shellcheck disable=SC2088
     warn "~/.ssh/config is not symlinked to ${SSH_CONFIG_FILE}"
   fi
 
   # 2. Permissions
   local perms; perms="$(stat -f '%OLp' "$HOME/.ssh" 2>/dev/null || echo "?")"
   if [ "$perms" = "700" ]; then
+    # shellcheck disable=SC2088
     success "~/.ssh permissions: 700"
   else
+    # shellcheck disable=SC2088
     warn "~/.ssh permissions: ${perms} (expected 700)"
   fi
 
   # 3. Sockets dir
   if [ -d "$HOME/.ssh/sockets" ]; then
+    # shellcheck disable=SC2088
     success "~/.ssh/sockets/ exists"
   else
+    # shellcheck disable=SC2088
     warn "~/.ssh/sockets/ missing — multiplexing will fail"
   fi
 
   # 4. 1Password agent socket
   if [ -S "$HOME/.1password/agent.sock" ]; then
+    # shellcheck disable=SC2088
     success "1Password agent socket: ~/.1password/agent.sock"
   else
     warn "1Password agent socket not found (app may be closed)"
@@ -212,6 +218,7 @@ stage_keygen() {
   echo ""
   info "Key type:"
   local PS3="  Choose: "
+  # shellcheck disable=SC2034  # select var, used via $REPLY
   select kt in "ed25519 (recommended)" "rsa" "ecdsa"; do
     case "$REPLY" in
       1) KEYGEN_TYPE="ed25519"; break ;;
@@ -229,6 +236,7 @@ stage_keygen() {
   # Passphrase
   echo ""
   info "Passphrase:"
+  # shellcheck disable=SC2034
   select pp in "Set a passphrase (prompted during generation)" "No passphrase (empty)"; do
     case "$REPLY" in
       1) KEYGEN_PASSPHRASE="yes"; break ;;
@@ -270,7 +278,7 @@ stage_write() {
 
   # Back up existing regular file (not a symlink)
   if [ -f "$HOME/.ssh/config" ] && [ ! -L "$HOME/.ssh/config" ]; then
-    local backup="$HOME/.ssh/config.backup.$(date +%Y%m%d_%H%M%S)"
+    local backup; backup="$HOME/.ssh/config.backup.$(date +%Y%m%d_%H%M%S)"
     info "Backing up ~/.ssh/config → ${backup}"
     cp "$HOME/.ssh/config" "$backup"
   fi
@@ -337,6 +345,7 @@ main() {
   echo ""
 
   local PS3="  Choose auth method: "
+  # shellcheck disable=SC2034  # select var, used via $REPLY
   select choice in \
     "1Password agent only" \
     "File-based keys only" \
@@ -391,6 +400,7 @@ main() {
   echo ""
   info "Keepalive interval (ServerAliveInterval):"
   local PS3="  Choose: "
+  # shellcheck disable=SC2034
   select ka in "60s (default)" "30s" "disabled"; do
     case "$REPLY" in
       1) VARIANTS[keepalive]="60"; break ;;
@@ -429,6 +439,7 @@ main() {
 # ── Source-only guard (for testing) ──────────────────────────────────────────
 # Set SSH_CONFIG_SOURCE_ONLY=1 to source this file without running install logic.
 if [ "${SSH_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
+  # shellcheck disable=SC2317  # exit 0 is reachable when not sourced
   return 0 2>/dev/null || exit 0
 fi
 

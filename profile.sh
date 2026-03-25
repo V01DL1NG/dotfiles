@@ -17,7 +17,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 . "$SCRIPT_DIR/platform.sh"
 PROFILES_DIR="$SCRIPT_DIR/profiles"
 
@@ -124,7 +124,9 @@ generate_container() {
     printf '# Tools:    %s\n' "$tools"
     printf '#\n'
     printf '# Usage:\n'
+    # shellcheck disable=SC2094  # basename uses string, not file contents
     printf '#   bash %s              — install (copies files locally, no symlinks)\n' "$(basename "$output")"
+    # shellcheck disable=SC2094
     printf '#   bash %s --info      — show metadata without installing\n' "$(basename "$output")"
     printf '\n'
 
@@ -135,7 +137,7 @@ generate_container() {
     printf '_PROFILE_CREATED=%s\n' "$(printf '%q' "$created")"
     printf '_PROFILE_TOOLS=%s\n' "$(printf '%q' "$tools")"
     printf '\n'
-
+ 
     # ── Embedded files ───────────────────────────────────────────────────────
     printf '# Files: destination (shell expression)|base64-encoded content\n'
     printf '_FILES=(\n'
@@ -305,7 +307,6 @@ cmd_export() {
   local name="Exported Profile"
   local desc="Live config snapshot"
   local output=""
-
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name|-n) name="$2";   shift 2 ;;
@@ -321,7 +322,7 @@ cmd_export() {
 
   local zshrc="$HOME/.zshrc"
   if [ ! -f "$zshrc" ]; then
-    error "~/.zshrc not found — nothing to export"
+    error "$HOME/.zshrc not found — nothing to export"
     exit 1
   fi
 
@@ -361,7 +362,7 @@ cmd_export() {
       omp_theme="$(eval echo "$omp_theme" 2>/dev/null || true)"
       if [ -n "$omp_theme" ] && [ -f "$omp_theme" ]; then
         local rel
-        rel="$(echo "$omp_theme" | sed "s|$HOME|\\\$HOME|g")"
+        rel="${omp_theme//"$HOME"/\$HOME}"
         entries+=( "${rel}|$(b64_file "$omp_theme")" )
         success "captured $(basename "$omp_theme")"
       fi
@@ -373,14 +374,14 @@ cmd_export() {
   if [ -d "$iterm_dp" ]; then
     for f in "$iterm_dp"/*.json; do
       [ -f "$f" ] || continue
-      local rel="\$HOME/Library/Application Support/iTerm2/DynamicProfiles/$(basename "$f")"
+      local rel; rel="\$HOME/Library/Application Support/iTerm2/DynamicProfiles/$(basename "$f")"
       entries+=( "${rel}|$(b64_file "$f")" )
       success "captured iTerm2/$(basename "$f")"
     done
   fi
 
   generate_container "$name" "$desc" "$base" "$tools" "$output" \
-    ${entries[@]+"${entries[@]}"}
+    "${entries[@]}"
 
   echo ""
   success "Saved → ${output}"
@@ -416,7 +417,7 @@ cmd_pack() {
   local profile_dir="$PROFILES_DIR/$profile_name"
   if [ ! -d "$profile_dir" ]; then
     error "Profile not found: $profile_name"
-    error "Available: $(ls "$PROFILES_DIR" | tr '\n' ' ')"
+    error "Available: $(find "$PROFILES_DIR" -maxdepth 1 -type d | awk -F/ '{print $NF}' | tr '\n' ' ')"
     exit 1
   fi
 
@@ -648,7 +649,7 @@ cmd_diff() {
 
   local tmpA tmpB
   tmpA="$(mktemp -d)"; tmpB="$(mktemp -d)"
-  trap "rm -rf '$tmpA' '$tmpB'" EXIT
+  trap 'rm -rf "$tmpA" "$tmpB"' EXIT
 
   extract_to_dir "$left" "$tmpA"
 
@@ -729,7 +730,7 @@ cmd_rollback() {
     done
     $seen || timestamps+=("$ts")
   done
-  IFS=$'\n' timestamps=($(printf '%s\n' "${timestamps[@]}" | sort -r)); unset IFS
+  IFS=$'\n' read -r -a timestamps <<< "$(printf '%s\n' "${timestamps[@]}" | sort -r)"; unset IFS
 
   if $list_only; then
     echo ""
@@ -780,7 +781,7 @@ cmd_rollback() {
   info "Files to restore:"
   echo ""
   for bak in "${to_restore[@]}"; do
-    local orig="${bak%.backup.$selected_ts}"
+    local orig="${bak%.backup."$selected_ts"}"
     printf "    %s\n    → %s\n\n" "$bak" "$orig"
   done
 
@@ -788,7 +789,7 @@ cmd_rollback() {
   case "$confirm" in
     y|Y)
       for bak in "${to_restore[@]}"; do
-        local orig="${bak%.backup.$selected_ts}"
+        local orig="${bak%.backup."$selected_ts"}"
         cp "$bak" "$orig"
         success "restored $(basename "$orig")"
       done
@@ -798,7 +799,7 @@ cmd_rollback() {
     *) info "Aborted." ;;
   esac
 }
-
+ 
 # ── Command: push ─────────────────────────────────────────────────────────────
 cmd_push() {
   local container="${1:-}"
@@ -850,7 +851,7 @@ cmd_fetch() {
 
   local tmpfile
   tmpfile="$(mktemp /tmp/profile-XXXXXX.profile.sh)"
-  trap "rm -f '$tmpfile'" EXIT
+  trap 'rm -f "$tmpfile"' EXIT
 
   if [[ "$url" =~ gist\.github\.com ]]; then
     command -v gh >/dev/null 2>&1 || { error "gh CLI required for Gist URLs — install with: brew install gh"; exit 1; }
@@ -860,7 +861,6 @@ cmd_fetch() {
     command -v curl >/dev/null 2>&1 || { error "curl not found"; exit 1; }
     curl -fsSL "$url" -o "$tmpfile"
   fi
-
   chmod +x "$tmpfile"
   success "Downloaded"
 
@@ -900,7 +900,7 @@ cmd_patch() {
   local profile_dir="$PROFILES_DIR/$profile_name"
   [ -d "$profile_dir" ] || {
     error "Profile not found: $profile_name"
-    error "Available: $(ls "$PROFILES_DIR" | tr '\n' ' ')"
+    error "Available: $(find "$PROFILES_DIR" -maxdepth 1 -type d -exec basename {} \; | tr '\n' ' ')"
     exit 1
   }
 

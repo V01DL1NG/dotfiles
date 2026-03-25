@@ -176,6 +176,11 @@ fi
 # atuin — shell history database (replaces ctrl-r with timestamps, exit codes, etc.)
 if command -v atuin >/dev/null 2>&1; then
   eval "$(atuin init zsh)"
+  # Background sync on shell start — only when logged in (ATUIN_SESSION set by init)
+  # Set ATUIN_SYNC=0 to disable (e.g. in roles/server.zsh or slow connections)
+  if [[ "${ATUIN_SYNC:-1}" = "1" ]] && command -v atuin >/dev/null 2>&1; then
+    atuin sync 2>/dev/null &!
+  fi
 fi
 
 # direnv — auto-load/unload .envrc per directory

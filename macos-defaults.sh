@@ -13,7 +13,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 . "$SCRIPT_DIR/platform.sh"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -24,7 +24,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 RESET='\033[0m'
-
 info()    { echo -e "  ${LAVENDER}${1}${RESET}"; }
 success() { echo -e "  ${GREEN}✓${RESET}  ${1}"; }
 warn()    { echo -e "  ${YELLOW}!${RESET}  ${1}"; }
@@ -405,6 +404,7 @@ pick_interactive() {
   # ── Preset picker ────────────────────────────────────────────────────────
   local preset_choice
   PS3="  Choose a starting point: "
+  # shellcheck disable=SC2034  # select var, used via $REPLY
   select preset_choice in \
     "Minimal — keyboard feel, tap-to-click, file hygiene, save panels (9 settings)" \
     "Opinionated — everything (32 settings)" \
@@ -453,27 +453,28 @@ _fallback_no_fzf() {
     minimal)
       SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}")
       info "Applying minimal preset (9 settings)"
-      ;;
-    opinionated)
-      SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}")
-      info "Applying opinionated preset (32 settings)"
-      ;;
-    custom)
-      # Without fzf, custom mode degrades to a preset-only select menu
-      echo ""
-      local fallback_choice
-      PS3="  Choose a preset: "
-      select fallback_choice in \
-        "Minimal — keyboard feel, tap-to-click, file hygiene, save panels (9 settings)" \
-        "Opinionated — everything (32 settings)" \
-        "Skip — do nothing"; do
-        case "$REPLY" in
-          1) SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}"); break ;;
-          2) SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}"); break ;;
-          3) SELECTED_SETTINGS=(); break ;;
-          *) echo "  Enter 1, 2, or 3." ;;
-        esac
-      done
+       ;;
+     opinionated)
+       SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}")
+       info "Applying opinionated preset (32 settings)"
+       ;;
+     custom)
+       # Without fzf, custom mode degrades to a preset-only select menu
+       echo ""
+       local fallback_choice
+       PS3="  Choose a preset: "
+       # shellcheck disable=SC2034  # select var, used via $REPLY
+       select fallback_choice in \
+         'Minimal — keyboard feel, tap-to-click, file hygiene, save panels (9 settings)' \
+         'Opinionated — everything (32 settings)' \
+         'Skip — do nothing'; do
+         case "$REPLY" in
+           1) SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}"); break ;;
+           2) SELECTED_SETTINGS=("${MINIMAL_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}"); break ;;
+           3) SELECTED_SETTINGS=(); break ;;
+           *) echo "  Enter 1, 2, or 3." ;;
+         esac
+       done
       ;;
   esac
 }

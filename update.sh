@@ -68,6 +68,12 @@ hash_file() {
 # ── Pull latest changes ───────────────────────────────────────────────────────
 header "Updating dotfiles repo"
 
+# Take a pre-update snapshot for incident recovery / diffing
+if ! $CHECK_ONLY && [ -f "$SCRIPT_DIR/scripts/snapshot.sh" ]; then
+  bash "$SCRIPT_DIR/scripts/snapshot.sh" >/dev/null 2>&1 && \
+    info "pre-update snapshot saved to ~/.dotfiles-snapshots/" || true
+fi
+
 if ! git -C "$SCRIPT_DIR" diff --quiet HEAD 2>/dev/null; then
   warn "Uncommitted changes in repo — skipping pull"
 else
@@ -209,7 +215,7 @@ for entry in "${FILE_MAP[@]}"; do
       read -r -p "  Overwrite with repo version? [y/N] " choice
       case "$choice" in
         y|Y)
-          local bak="${dst}.backup.${TIMESTAMP}"
+          bak="${dst}.backup.${TIMESTAMP}"
           cp "$dst" "$bak"
           warn "backed up → $bak"
           cp "$src" "$dst"

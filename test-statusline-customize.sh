@@ -26,6 +26,7 @@ fi
 # ── Assembler ─────────────────────────────────────────────────────────────────
 section "Assembler"
 
+# shellcheck disable=SC1091  # statusline-customize.sh not specified as input
 STATUSLINE_CUSTOMIZE_SOURCE_ONLY=1 . "$SCRIPT_DIR/statusline-customize.sh"
 
 TMPDIR_TEST="$(mktemp -d)"
@@ -144,20 +145,14 @@ fi
 section "Arg parsing"
 
 # Use isolated config/output paths so tests never write to real files
-STATUSLINE_CONFIG_PATH="$TMPDIR_TEST/arg-test-config.json" \
-  bash "$SCRIPT_DIR/statusline-customize.sh" --status </dev/null >/dev/null 2>&1 \
-  && pass "--status exits 0" \
-  || fail "--status exits non-zero"
+if STATUSLINE_CONFIG_PATH="$TMPDIR_TEST/arg-test-config.json" \
+  bash "$SCRIPT_DIR/statusline-customize.sh" --status </dev/null >/dev/null 2>&1; then pass "--status exits 0"; else fail "--status exits non-zero"; fi
 
-STATUSLINE_CONFIG_PATH="$TMPDIR_TEST/arg-test-config.json" \
+if STATUSLINE_CONFIG_PATH="$TMPDIR_TEST/arg-test-config.json" \
 STATUSLINE_OUTPUT_PATH="$TMPDIR_TEST/arg-test-output.sh" \
-  bash "$SCRIPT_DIR/statusline-customize.sh" --generate </dev/null >/dev/null 2>&1 \
-  && pass "--generate exits 0" \
-  || fail "--generate exits non-zero"
+  bash "$SCRIPT_DIR/statusline-customize.sh" --generate </dev/null >/dev/null 2>&1; then pass "--generate exits 0"; else fail "--generate exits non-zero"; fi
 
-bash "$SCRIPT_DIR/statusline-customize.sh" --badflag </dev/null >/dev/null 2>&1 \
-  && fail "--badflag should exit non-zero" \
-  || pass "--badflag exits non-zero"
+if bash "$SCRIPT_DIR/statusline-customize.sh" --badflag </dev/null >/dev/null 2>&1; then fail "--badflag should exit non-zero"; else pass "--badflag exits non-zero"; fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""

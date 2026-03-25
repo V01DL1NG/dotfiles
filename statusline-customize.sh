@@ -430,13 +430,13 @@ PYEOF
       local menu=""
       for opt in "${options[@]}"; do
         local cur
-        cur=$(python3 - "$config" "$seg" "$opt" << 'PYEOF'
+        cur=$(python3 - "$config" "$seg" "$opt" 2>/dev/null << 'PYEOF' || echo "—"
 import json, sys
 c = json.load(open(sys.argv[1]))
 val = c.get('segment_config', {}).get(sys.argv[2], {}).get(sys.argv[3], '—')
 print(val)
 PYEOF
-2>/dev/null || echo "—")
+)
         menu+="$opt    [current: $cur]\n"
       done
 
@@ -451,12 +451,12 @@ PYEOF
       local new_val
       case "$opt_name" in
         *color*)
-          new_val=$(printf '%s\n' $palette_names | fzf \
+          new_val=$(printf '%s\n' "$palette_names" | fzf \
             --header="Pick color for $seg.$opt_name" \
             --prompt="Color > ") || continue
           ;;
         warn_threshold|max_depth)
-          new_val=$(printf '%s\n' $preset_thresholds | fzf \
+          new_val=$(printf '%s\n' "$preset_thresholds" | fzf \
             --print-query \
             --header="Pick threshold (or type custom value)" \
             --prompt="Value > " | tail -1) || continue

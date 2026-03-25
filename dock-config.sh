@@ -11,7 +11,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 . "$SCRIPT_DIR/platform.sh"
 
 # ── Config dir (overridable for tests) ───────────────────────────────────────
@@ -314,6 +314,7 @@ dock_customise() {
 
   local choice
   PS3="  Which role to configure? "
+  # shellcheck disable=SC2034  # select var, used via $REPLY
   select choice in "Work" "Personal" "Both"; do
     case "$REPLY" in
       1) dock_customise_role "work";                               break ;;
@@ -329,6 +330,7 @@ dock_customise() {
 
 # ── Source-only guard (for testing, macOS only — Linux exits at macOS guard) ─
 if [ "${DOCK_CONFIG_SOURCE_ONLY:-}" = "1" ]; then
+  # shellcheck disable=SC2317  # exit 0 reachable when not sourced
   return 0 2>/dev/null || exit 0
 fi
 
