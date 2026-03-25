@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=platform.sh
+# shellcheck disable=SC1091  # platform.sh not passed as input
 . "$SCRIPT_DIR/platform.sh"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
@@ -215,14 +215,14 @@ section_plugins() {
 section_configs() {
   header "Config Files"
 
-  # ~/.zshrc — local copy is good; symlink is a warning; missing is a failure
+  # $HOME/.zshrc — local copy is good; symlink is a warning; missing is a failure
   local zshrc="$HOME/.zshrc"
   if [ -L "$zshrc" ]; then
-    warn_count "~/.zshrc is still a symlink — run choose-profile.sh to install a local copy"
+    warn_count "$HOME/.zshrc is still a symlink — run choose-profile.sh to install a local copy"
   elif [ -f "$zshrc" ]; then
-    pass "~/.zshrc (local copy)"
+    pass "$HOME/.zshrc (local copy)"
   else
-    fail "~/.zshrc is missing"
+    fail "$HOME/.zshrc is missing"
   fi
 
   # Remaining configs — symlink or regular file are both acceptable
@@ -272,13 +272,15 @@ section_font() {
   # Font file presence check (platform-specific paths)
   local font_found=false
   if [ "$DOTFILES_OS" = "macos" ]; then
-    ls ~/Library/Fonts/FiraCode*.ttf \
-       ~/Library/Fonts/FiraCodeNerdFont*.ttf \
+    # shellcheck disable=SC2010  # ls|grep is fine for font glob existence check
+    ls "$HOME/Library/Fonts/FiraCode*.ttf" \
+       "$HOME/Library/Fonts/FiraCodeNerdFont*.ttf" \
        /Library/Fonts/FiraCode*.ttf \
        2>/dev/null | grep -q . && font_found=true
   else
-    ls ~/.local/share/fonts/FiraCode*.ttf \
-       ~/.local/share/fonts/FiraCodeNerdFont*.ttf \
+    # shellcheck disable=SC2010
+    ls "$HOME/.local/share/fonts/FiraCode*.ttf" \
+       "$HOME/.local/share/fonts/FiraCodeNerdFont*.ttf" \
        /usr/share/fonts/truetype/firacode/FiraCode*.ttf \
        2>/dev/null | grep -q . && font_found=true
   fi
@@ -291,7 +293,7 @@ section_font() {
   fi
 
   # Terminal font config checks (shared function from font-config.sh)
-  # shellcheck source=font-config.sh
+  # shellcheck disable=SC1091  # font-config.sh not passed as input
   FONT_CONFIG_SOURCE_ONLY=1 . "$SCRIPT_DIR/font-config.sh"
 
   local status
@@ -339,6 +341,7 @@ section_iterm2() {
     pass "DynamicProfiles directory exists"
     if ls "$iterm_profiles_dir"/*.json >/dev/null 2>&1; then
       local count
+      # shellcheck disable=SC2012  # ls is fine for counting .json files
       count="$(ls "$iterm_profiles_dir"/*.json 2>/dev/null | wc -l | tr -d ' ')"
       pass "$count .json profile(s) installed"
     else
@@ -358,8 +361,10 @@ section_macos_defaults() {
 
   # Check 1: Screenshots directory
   if [ -d "$HOME/Desktop/Screenshots" ]; then
+    # shellcheck disable=SC2088  # ~ in display string is intentional
     pass "~/Desktop/Screenshots directory exists"
   else
+    # shellcheck disable=SC2088
     warn_count "~/Desktop/Screenshots not found — run: ./macos-defaults.sh"
   fi
 
@@ -373,12 +378,43 @@ section_macos_defaults() {
   fi
 }
 
+# ── Section: Brewfile drift ───────────────────────────────────────────────────
+section_brew_audit() {
+  # macOS only — relies on brew
+  [ "$DOTFILES_OS" != "macos" ] && return
+  command -v brew >/dev/null 2>&1 || return
+
+  header "Brewfile Drift"
+
+  # Untracked leaves (installed but not in Brewfile)
+  local declared_formulae installed_leaves untracked
+  declared_formulae="$(grep '^brew ' "$SCRIPT_DIR/Brewfile" 2>/dev/null \
+    | sed 's/^brew "\([^"]*\)".*/\1/' | sed 's|.*/||' | sort)"
+  installed_leaves="$(brew leaves 2>/dev/null | sort)"
+  untracked="$(comm -23 \
+    <(echo "$installed_leaves") \
+    <(echo "$declared_formulae") 2>/dev/null || true)"
+
+  # Missing from system
+  local not_installed
+  not_installed="$(comm -23 \
+    <(echo "$declared_formulae") \
+    <(brew list --formula 2>/dev/null | sort) 2>/dev/null || true)"
+
+  if [ -z "$untracked" ] && [ -z "$not_installed" ]; then
+    pass "Brewfile in sync (no drift detected)"
+  else
+    [ -n "$untracked" ] && warn_count "$(echo "$untracked" | wc -l | tr -d ' ') installed formula(e) not in Brewfile — run ./brew-audit.sh --fix"
+    [ -n "$not_installed" ] && warn_count "$(echo "$not_installed" | wc -l | tr -d ' ') Brewfile formula(e) not installed — run ./brew-audit.sh --install"
+  fi
+}
+
 # ── Section: Roles ────────────────────────────────────────────────────────────
 section_roles() {
   header "Shell Roles"
 
   local zshrc="$HOME/.zshrc"
-  local roles=(work personal server)
+  local roles=(work personal server secrets ai dev)
 
   for role in "${roles[@]}"; do
     if [ -f "$zshrc" ] && grep -q "# <<< role:${role} >>>" "$zshrc" 2>/dev/null; then
@@ -464,6 +500,7 @@ main() {
   section_font
   section_iterm2
   section_macos_defaults
+  section_brew_audit
   section_roles
   section_linux_shell
   section_linux_clipboard

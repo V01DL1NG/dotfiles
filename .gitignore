@@ -9,6 +9,12 @@
 Brewfile.personal
 *.local
 
+# Brewfile presets — track named presets in Brewfile.d/,
+# but ignore any personal overrides or machine-specific locks
+Brewfile.d/*.personal
+Brewfile.d/*.local
+Brewfile.lock.json
+
 # SSH keys (never commit these)
 id_*
 *.pem
@@ -22,6 +28,20 @@ id_*
 *_token
 *_secret
 atuin.key
+
+# Encrypted secret files (roles/secrets.zsh stores names, not the files themselves)
+.secrets/
+*.gpg
+
+# Snapshots — machine-specific, written to ~/.dotfiles-snapshots/ but guard
+# against anyone accidentally placing them in the repo
+scripts/snapshots/
+snapshots/
+*.snapshot.txt
+
+# Profile containers — exported .profile.sh files may contain embedded configs
+# that include personal edits; don't track them in the repo
+*.profile.sh
 
 # Editor artifacts
 *.swp
