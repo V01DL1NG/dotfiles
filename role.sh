@@ -29,7 +29,7 @@ error()   { echo -e "  ${RED}✗${RESET}  ${1}" >&2; }
 header()  { echo -e "\n${BOLD}${PURPLE}${1}${RESET}"; }
 
 # ── Known roles ──────────────────────────────────────────────────────────────
-declare -a KNOWN_ROLES=(work personal server)
+declare -a KNOWN_ROLES=(work personal server secrets ai dev)
 
 # ── Role descriptions ─────────────────────────────────────────────────────────
 role_description() {
@@ -37,6 +37,9 @@ role_description() {
     work)     echo "corporate proxy stubs, work identity reminder" ;;
     personal) echo "project navigation shortcuts, daily note helper" ;;
     server)   echo "GUI tool fallbacks, larger history, ASCII prompt option" ;;
+    secrets)  echo "secret() helper — 1Password CLI / GPG injection into env vars" ;;
+    ai)       echo "ai-launcher shell integration — ai, ai-chat, ai-sanity aliases" ;;
+    dev)      echo "proj-new and proj-clone scaffolding helpers" ;;
   esac
 }
 
@@ -58,7 +61,7 @@ is_applied() {
 
 backup_zshrc() {
   local zshrc="$HOME/.zshrc"
-  local backup="${zshrc}.backup.$(date +%Y%m%d_%H%M%S)"
+  local backup; backup="${zshrc}.backup.$(date +%Y%m%d_%H%M%S)"
   cp "$zshrc" "$backup"
   info "backed up ~/.zshrc → $backup"
 }
@@ -160,16 +163,87 @@ cmd_status() {
   echo ""
 }
 
+# ── create ────────────────────────────────────────────────────────────────────
+cmd_create() {
+  local role="${1:-}"
+  if [ -z "$role" ]; then
+    error "create requires a role name (alphanumeric, hyphens OK)"
+    show_usage
+    exit 1
+  fi
+
+  # Validate name — letters, digits, hyphens only
+  if ! echo "$role" | grep -qE '^[a-zA-Z0-9-]+$'; then
+    error "Role name must contain only letters, digits, and hyphens: '${role}'"
+    exit 1
+  fi
+
+  local role_file="$SCRIPT_DIR/roles/${role}.zsh"
+  if [ -f "$role_file" ]; then
+    error "Role '${role}' already exists: $role_file"
+    exit 1
+  fi
+
+  # Prompt for metadata
+  echo ""
+  echo -e "${BOLD}${PURPLE}Creating new role: ${role}${RESET}"
+  echo ""
+  read -r -p "  Description (one line): " desc
+  read -r -p "  Env vars to export (comma-separated, or Enter to skip): " envvars
+  read -r -p "  Aliases (e.g. alias foo='bar', or Enter to skip): " aliases
+  echo ""
+
+  # Write the role file
+  {
+    printf '# %s role\n' "$role"
+    [ -n "$desc" ] && printf '# %s\n' "$desc"
+    printf '\n'
+
+    if [ -n "$envvars" ]; then
+      printf '# Environment variables\n'
+      IFS=',' read -ra _vars <<< "$envvars"
+      for v in "${_vars[@]}"; do
+        v="${v// /}"  # trim spaces
+        [ -n "$v" ] && printf '# export %s=""\n' "$v"
+      done
+      printf '\n'
+    fi
+
+    if [ -n "$aliases" ]; then
+      printf '# Aliases\n'
+      printf '%s\n' "$aliases"
+      printf '\n'
+    fi
+
+    printf '# Add your role content here\n'
+  } > "$role_file"
+
+  # Register in KNOWN_ROLES by patching role.sh itself
+  local current_roles
+  current_roles="$(grep '^declare -a KNOWN_ROLES=' "$SCRIPT_DIR/role.sh" | sed "s/.*=(\(.*\))/\1/")"
+  sed -i.bak "s|^declare -a KNOWN_ROLES=.*|declare -a KNOWN_ROLES=(${current_roles} ${role})|" "$SCRIPT_DIR/role.sh"
+  rm -f "$SCRIPT_DIR/role.sh.bak"
+
+  # Add description stub
+  sed -i.bak "s|^  esac|    ${role}) echo \"${desc}\" ;;\n  esac|" "$SCRIPT_DIR/role.sh"
+  rm -f "$SCRIPT_DIR/role.sh.bak"
+
+  success "Created: $role_file"
+  info "Edit the file to add your content, then:"
+  info "  ./role.sh apply ${role}"
+}
+
 # ── usage ─────────────────────────────────────────────────────────────────────
 show_usage() {
   echo ""
   echo -e "${BOLD}${PURPLE}role.sh${RESET} — role management CLI"
   echo ""
   echo "  Usage:"
-  echo "    ./role.sh apply  <work|personal|server>   append role to ~/.zshrc"
-  echo "    ./role.sh remove <work|personal|server>   remove role from ~/.zshrc"
-  echo "    ./role.sh list                             show available roles"
-  echo "    ./role.sh status                           show which roles are active"
+  echo "    ./role.sh apply  <role>   append role to ~/.zshrc"
+  echo "    ./role.sh remove <role>   remove role from ~/.zshrc"
+  echo "    ./role.sh create <name>   scaffold a new role interactively"
+  echo "    ./role.sh list            show available roles"
+  echo "    ./role.sh status          show which roles are active"
   echo ""
 }
 
@@ -177,6 +251,7 @@ show_usage() {
 case "${1:-}" in
   apply)  cmd_apply  "${2:-}" ;;
   remove) cmd_remove "${2:-}" ;;
+  create) cmd_create "${2:-}" ;;
   list)   cmd_list ;;
   status) cmd_status ;;
   *)      show_usage ;;
