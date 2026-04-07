@@ -58,7 +58,7 @@ _git_branch() {
   printf ' %%F{91}[%s]%%f' "$branch"
 }
 setopt PROMPT_SUBST
-PROMPT='%F{97}%~%f$(_git_branch) %F{183}❯%f '
+PROMPT='%F{183}%n@%m%f %F{97}%~%f$(_git_branch) %F{183}❯%f '
 
 # ===========================================================================
 # ALIASES
@@ -123,26 +123,40 @@ fi
 # ZSH PLUGINS
 # ===========================================================================
 
+# Resolve zsh plugin path — checks Homebrew (macOS), apt/system, then ~/.zsh/ fallback
+_zsh_plugin() {
+  local name="$1"
+  local brew_path="/opt/homebrew/share/${name}/${name}.zsh"
+  local apt_path="/usr/share/${name}/${name}.zsh"
+  local home_path="${HOME}/.zsh/${name}/${name}.zsh"
+  if   [ -f "$brew_path" ]; then echo "$brew_path"
+  elif [ -f "$apt_path"  ]; then echo "$apt_path"
+  elif [ -f "$home_path" ]; then echo "$home_path"
+  fi
+}
+
 # Autosuggestions (ghost text from history)
-if [ -f /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
-  source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+_p="$(_zsh_plugin zsh-autosuggestions)"
+if [ -n "$_p" ]; then
+  source "$_p"
   ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#4c1f5e"
   ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 fi
 
 # History substring search — must load BEFORE syntax-highlighting
-if [ -f /opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh ]; then
-  source /opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+_p="$(_zsh_plugin zsh-history-substring-search)"
+if [ -n "$_p" ]; then
+  source "$_p"
   bindkey '^[[A' history-substring-search-up    # up arrow
   bindkey '^[[B' history-substring-search-down  # down arrow
-  # also bind k/j in vi normal mode
   bindkey -M vicmd 'k' history-substring-search-up
   bindkey -M vicmd 'j' history-substring-search-down
 fi
 
 # Syntax highlighting (velvet theme colors)
-if [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
-  source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+_p="$(_zsh_plugin zsh-syntax-highlighting)"
+if [ -n "$_p" ]; then
+  source "$_p"
   ZSH_HIGHLIGHT_STYLES[command]="fg=#EFDCF9,bold"
   ZSH_HIGHLIGHT_STYLES[builtin]="fg=#EFDCF9,bold"
   ZSH_HIGHLIGHT_STYLES[alias]="fg=#EFDCF9,bold"

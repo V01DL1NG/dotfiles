@@ -98,11 +98,13 @@ pkg() {
     apt)
       case "$name" in
         fd)       echo "fd-find" ;;
-        delta)    echo "" ;;   # not in default repos on Ubuntu ≤22.04
-        lazygit)  echo "" ;;   # PPA required
-        atuin)    echo "" ;;   # use curl installer
+        delta)    echo "" ;;   # not in default repos — bootstrap installs .deb from GitHub
+        lazygit)  echo "" ;;   # not in default repos — bootstrap installs from GitHub
+        atuin)    echo "" ;;   # not in default repos — use setup.atuin.sh
+        eza)      echo "" ;;   # not in default repos — bootstrap adds gierens apt repo
+        zoxide)   echo "" ;;   # not in Ubuntu 22.04 apt — bootstrap uses install.sh
         lua-ls)   echo "" ;;   # not in default repos
-        bat|eza|fzf|neovim|zoxide|tmux|git) echo "$name" ;;
+        bat|fzf|neovim|tmux|git) echo "$name" ;;
         *)        echo "$name" ;;
       esac ;;
     dnf)

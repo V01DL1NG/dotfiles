@@ -219,3 +219,8 @@ meminfo() {
 jamflogs() {
 	tail -n 100 /var/log/jamf.log | less
 }
+
+# ===========================================================================
+# LOCAL OVERRIDES (untracked, machine-specific)
+# ===========================================================================
+[[ -f ~/.zshrc_local ]] && source ~/.zshrc_local
